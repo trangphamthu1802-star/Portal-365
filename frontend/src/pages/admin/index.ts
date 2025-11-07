@@ -1,0 +1,1 @@
+export { AdminArticlesList } from './ArticlesList';

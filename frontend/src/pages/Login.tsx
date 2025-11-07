@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { authService } from '../lib/api';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -8,6 +8,8 @@ export default function LoginPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
+  const { login } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -15,8 +17,18 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      await authService.login(email, password);
-      navigate('/admin');
+      await login({ email, password });
+      
+      // Check for redirect query parameter
+      const params = new URLSearchParams(location.search);
+      const redirectTo = params.get('redirect');
+      
+      // Navigate to redirect URL if valid, otherwise go to /admin
+      if (redirectTo && redirectTo.startsWith('/admin')) {
+        navigate(redirectTo, { replace: true });
+      } else {
+        navigate('/admin', { replace: true });
+      }
     } catch (err: any) {
       setError(err.response?.data?.error?.message || 'Login failed');
     } finally {

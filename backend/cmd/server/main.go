@@ -10,7 +10,7 @@ import (
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
 
-	_ "github.com/thieugt95/portal-365/backend/docs"
+	_ "github.com/thieugt95/portal-365/backend/docs/swagger"
 	"github.com/thieugt95/portal-365/backend/internal/config"
 	"github.com/thieugt95/portal-365/backend/internal/database"
 	"github.com/thieugt95/portal-365/backend/internal/middleware"

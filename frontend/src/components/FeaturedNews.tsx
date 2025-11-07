@@ -1,11 +1,16 @@
 import { Link } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { getArticleImage } from '../lib/images';
 
 interface Article {
   id: number;
   title: string;
   slug: string;
-  summary: string;
+  summary?: string;
+  excerpt?: string;
   thumbnail_url?: string;
+  featured_image?: string;
+  content?: string;
   category?: { name: string };
   published_at: string;
 }
@@ -17,41 +22,74 @@ interface FeaturedNewsProps {
 export default function FeaturedNews({ articles }: FeaturedNewsProps) {
   if (!articles || articles.length === 0) return null;
 
-  const mainArticle = articles[0];
-  const sideArticles = articles.slice(1, 5);
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const allArticles = articles.slice(0, 5);
 
-  // External link for the featured banner
-  const externalLink = "https://www.phongkhongkhongquan.vn/02/quan-chung-phong-khong-khong-quan-co-dong-duong-khong-cuu-tro-nhan-dan-tinh-lang-son.html";
+  // Auto-rotate every 5 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentIndex((prev) => (prev + 1) % allArticles.length);
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, [allArticles.length]);
+
+  const mainArticle = allArticles[currentIndex];
+  const sideArticles = allArticles.filter((_, index) => index !== currentIndex);
+
+  const handleSideArticleClick = (index: number) => {
+    const actualIndex = allArticles.findIndex(a => a.id === sideArticles[index].id);
+    setCurrentIndex(actualIndex);
+  };
 
   return (
     <div className="bg-white shadow-lg rounded-lg overflow-hidden">
       <div className="grid md:grid-cols-3 gap-4">
-        {/* Main featured banner - External Link */}
+        {/* Main featured banner - Auto-rotating */}
         <div className="md:col-span-2 relative group">
-          <a href={externalLink} target="_blank" rel="noopener noreferrer" className="block">
+          <Link to={`/a/${mainArticle.slug}`} className="block">
             <div className="relative h-96 md:h-[500px] overflow-hidden">
               <img
-                src={mainArticle.thumbnail_url || `https://picsum.photos/seed/${mainArticle.id}/800/500`}
-                alt="Featured Banner"
+                src={getArticleImage(mainArticle)}
+                alt={mainArticle.title}
+                loading="lazy"
                 className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
               />
+              <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-6">
+                <h2 className="text-white text-2xl font-bold mb-2">{mainArticle.title}</h2>
+                <p className="text-gray-200 text-sm line-clamp-2">{mainArticle.summary || mainArticle.excerpt}</p>
+              </div>
             </div>
-          </a>
+          </Link>
+          
+          {/* Navigation dots */}
+          <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex gap-2 z-10">
+            {allArticles.map((_, index) => (
+              <button
+                key={index}
+                onClick={() => setCurrentIndex(index)}
+                className={`w-2 h-2 rounded-full transition-all ${
+                  index === currentIndex ? 'bg-white w-6' : 'bg-white/50'
+                }`}
+              />
+            ))}
+          </div>
         </div>
 
         {/* Side articles */}
         <div className="space-y-4">
-          {sideArticles.map((article) => (
-            <Link
+          {sideArticles.map((article, index) => (
+            <button
               key={article.id}
-              to={`/a/${article.slug}`}
-              className="block group bg-gray-50 hover:bg-gray-100 rounded-lg overflow-hidden transition-colors shadow-sm hover:shadow-md"
+              onClick={() => handleSideArticleClick(index)}
+              className="block w-full group bg-gray-50 hover:bg-gray-100 rounded-lg overflow-hidden transition-colors shadow-sm hover:shadow-md text-left"
             >
               <div className="flex gap-3 p-3">
                 <div className="flex-shrink-0 w-24 h-24 overflow-hidden rounded-md">
                   <img
-                    src={article.thumbnail_url || `https://picsum.photos/seed/${article.id}/200/200`}
+                    src={getArticleImage(article)}
                     alt={article.title}
+                    loading="lazy"
                     className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
                   />
                 </div>
@@ -68,7 +106,7 @@ export default function FeaturedNews({ articles }: FeaturedNewsProps) {
                   </div>
                 </div>
               </div>
-            </Link>
+            </button>
           ))}
         </div>
       </div>

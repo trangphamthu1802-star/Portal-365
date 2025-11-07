@@ -1,27 +1,73 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useArticles, useCategories, useArticleMutations } from '../../../hooks/useArticles';
-import { LoadingSpinner, EmptyState, Toast } from '../../../components/Common';
-import type { Article, ArticleStatus } from '../../../types/api';
+import { useAdminArticles } from '../../../hooks/useAdminArticles';
+import { useCategories, useTags } from '../../../hooks/useAdminArticles';
+import { EmptyState } from '../../../components/EmptyState';
+import LoadingSpinner from '../../../components/common/LoadingSpinner';
+import Toast from '../../../components/common/Toast';
+import { normalizeError } from '../../../lib/apiClient';
+import { useDeleteArticle, usePublishArticle, useUnpublishArticle } from '../../../hooks/useApi';
+
+type ArticleStatus = 'draft' | 'under_review' | 'published' | 'hidden' | 'rejected';
 
 export default function ArticlesList() {
   const navigate = useNavigate();
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
-  const [categoryFilter, setCategoryFilter] = useState<number | ''>('');
+  const [parentCategory, setParentCategory] = useState<string>(''); // 'hoat-dong' or 'tin-tuc'
+  const [categorySlug, setCategorySlug] = useState<string>('');
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [statusFilter, setStatusFilter] = useState<ArticleStatus | ''>('');
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
 
-  const { data: articlesData, isLoading } = useArticles({
+  const { categories, isLoading: categoriesLoading } = useCategories();
+  const { tags, isLoading: tagsLoading } = useTags();
+  
+  const { articles, pagination, isLoading, error } = useAdminArticles({
     page,
     page_size: 20,
     q: search || undefined,
-    category_id: categoryFilter || undefined,
+    category_slug: categorySlug || undefined,
+    tag_slugs: selectedTags.length > 0 ? selectedTags : undefined,
     status: statusFilter || undefined,
   });
 
-  const { data: categoriesData } = useCategories();
-  const { deleteArticle, publishArticle, unpublishArticle } = useArticleMutations();
+  const deleteArticle = useDeleteArticle();
+  const publishArticle = usePublishArticle();
+  const unpublishArticle = useUnpublishArticle();
+
+  // Group categories by parent
+  const { parentCategories, subcategories } = useMemo(() => {
+    const parents = categories.filter((c) => !c.parent_id);
+    const subs = categories.filter((c) => c.parent_id);
+    return { parentCategories: parents, subcategories: subs };
+  }, [categories]);
+
+  // Get subcategories for selected parent
+  const availableSubcategories = useMemo(() => {
+    if (!parentCategory) return subcategories;
+    const parent = parentCategories.find((p) => p.slug === parentCategory);
+    if (!parent) return [];
+    return subcategories.filter((s) => s.parent_id === parent.id);
+  }, [parentCategory, parentCategories, subcategories]);
+
+  const handleParentCategoryChange = (slug: string) => {
+    setParentCategory(slug);
+    setCategorySlug(''); // Reset subcategory
+    setPage(1);
+  };
+
+  const handleSubcategoryChange = (slug: string) => {
+    setCategorySlug(slug);
+    setPage(1);
+  };
+
+  const handleTagToggle = (slug: string) => {
+    setSelectedTags((prev) =>
+      prev.includes(slug) ? prev.filter((t) => t !== slug) : [...prev, slug]
+    );
+    setPage(1);
+  };
 
   const handleDelete = async (id: number) => {
     if (!window.confirm('Bạn có chắc muốn xóa bài viết này?')) return;
@@ -52,7 +98,7 @@ export default function ArticlesList() {
     }
   };
 
-  if (isLoading) {
+  if (isLoading && !articles.length) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <LoadingSpinner />
@@ -60,8 +106,25 @@ export default function ArticlesList() {
     );
   }
 
-  const articles = articlesData?.data || [];
-  const pagination = articlesData?.pagination;
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen">
+        <div className="text-red-600 text-center mb-4">
+          <svg className="w-16 h-16 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <h2 className="text-xl font-semibold mb-2">Lỗi tải dữ liệu</h2>
+          <p className="text-gray-600">{error}</p>
+        </div>
+        <button
+          onClick={() => window.location.reload()}
+          className="mt-4 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+        >
+          Thử lại
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6">
@@ -84,62 +147,115 @@ export default function ArticlesList() {
       </div>
 
       {/* Filters */}
-      <div className="mb-6 grid grid-cols-1 md:grid-cols-3 gap-4">
-        <input
-          type="text"
-          placeholder="Tìm kiếm theo tiêu đề..."
-          value={search}
-          onChange={(e) => {
-            setSearch(e.target.value);
-            setPage(1);
-          }}
-          className="px-4 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-        />
-        
-        <select
-          value={categoryFilter}
-          onChange={(e) => {
-            setCategoryFilter(e.target.value ? Number(e.target.value) : '');
-            setPage(1);
-          }}
-          className="px-4 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-        >
-          <option value="">Tất cả chuyên mục</option>
-          {categoriesData?.map((cat) => (
-            <option key={cat.id} value={cat.id}>
-              {cat.name}
-            </option>
-          ))}
-        </select>
+      <div className="mb-6 space-y-4">
+        {/* Row 1: Search and Status */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <input
+            type="text"
+            placeholder="Tìm kiếm theo tiêu đề..."
+            value={search}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setPage(1);
+            }}
+            className="px-4 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+          
+          <select
+            value={statusFilter}
+            onChange={(e) => {
+              setStatusFilter(e.target.value as ArticleStatus | '');
+              setPage(1);
+            }}
+            className="px-4 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="">Tất cả trạng thái</option>
+            <option value="draft">Nháp</option>
+            <option value="under_review">Chờ duyệt</option>
+            <option value="published">Đã xuất bản</option>
+            <option value="hidden">Đã ẩn</option>
+            <option value="rejected">Đã từ chối</option>
+          </select>
+        </div>
 
-        <select
-          value={statusFilter}
-          onChange={(e) => {
-            setStatusFilter(e.target.value as ArticleStatus | '');
-            setPage(1);
-          }}
-          className="px-4 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-        >
-          <option value="">Tất cả trạng thái</option>
-          <option value="draft">Nháp</option>
-          <option value="under_review">Đang xét duyệt</option>
-          <option value="published">Đã xuất bản</option>
-          <option value="hidden">Đã ẩn</option>
-          <option value="rejected">Đã từ chối</option>
-        </select>
+        {/* Row 2: Parent Category and Subcategory */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Nhóm chuyên mục</label>
+            <div className="flex gap-2">
+              <button
+                onClick={() => handleParentCategoryChange('')}
+                className={`flex-1 px-4 py-2 rounded ${
+                  !parentCategory
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                Tất cả
+              </button>
+              {parentCategories.map((parent) => (
+                <button
+                  key={parent.id}
+                  onClick={() => handleParentCategoryChange(parent.slug)}
+                  className={`flex-1 px-4 py-2 rounded ${
+                    parentCategory === parent.slug
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
+                  {parent.name}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Chuyên mục con</label>
+            <select
+              value={categorySlug}
+              onChange={(e) => handleSubcategoryChange(e.target.value)}
+              className="w-full px-4 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+              disabled={!parentCategory && availableSubcategories.length === 0}
+            >
+              <option value="">Tất cả</option>
+              {availableSubcategories.map((sub) => (
+                <option key={sub.id} value={sub.slug}>
+                  {sub.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        {/* Row 3: Tags (Chuyên đề) */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Chuyên đề</label>
+          <div className="flex flex-wrap gap-2">
+            {tags.map((tag) => (
+              <button
+                key={tag.id}
+                onClick={() => handleTagToggle(tag.slug)}
+                className={`px-3 py-1 rounded-full text-sm ${
+                  selectedTags.includes(tag.slug)
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                {tag.name}
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
-
+      {/* Articles Table or Empty State */}
       {articles.length === 0 ? (
         <EmptyState
-          message="Chưa có bài viết nào"
-          action={
-            <button
-              onClick={() => navigate('/admin/articles/create')}
-              className="mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-            >
-              Tạo bài viết đầu tiên
-            </button>
-          }
+          title="Chưa có bài viết nào"
+          description="Bắt đầu bằng cách tạo bài viết đầu tiên"
+          action={{
+            label: 'Tạo bài viết mới',
+            onClick: () => navigate('/admin/articles/create')
+          }}
         />
       ) : (
         <>
@@ -183,7 +299,14 @@ export default function ArticlesList() {
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className="text-sm text-gray-600">ID: {article.category_id}</span>
+                      <div className="text-sm text-gray-900">
+                        {article.category?.name || article.category_name || 'N/A'}
+                      </div>
+                      {article.category?.parent_slug && (
+                        <div className="text-xs text-gray-500">
+                          {article.category.parent_slug === 'hoat-dong' ? 'Hoạt động' : 'Tin tức'}
+                        </div>
+                      )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <StatusBadge status={article.status} />

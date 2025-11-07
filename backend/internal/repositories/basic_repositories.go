@@ -63,13 +63,21 @@ func (r *roleRepository) GetByName(ctx context.Context, name string) (*models.Ro
 	return role, nil
 }
 
+type CategoryFilter struct {
+	IsActive *bool
+	ParentID *int64
+	Page     int
+	PageSize int
+}
+
 type CategoryRepository interface {
 	Create(ctx context.Context, category *models.Category) error
 	GetByID(ctx context.Context, id int64) (*models.Category, error)
 	GetBySlug(ctx context.Context, slug string) (*models.Category, error)
 	Update(ctx context.Context, category *models.Category) error
 	Delete(ctx context.Context, id int64) error
-	List(ctx context.Context, page, pageSize int) ([]*models.Category, int, error)
+	List(ctx context.Context, filter *CategoryFilter) ([]models.Category, error)
+	ListWithTotal(ctx context.Context, filter *CategoryFilter) ([]models.Category, int, error)
 	GetAll(ctx context.Context) ([]*models.Category, error)
 }
 
@@ -133,27 +141,91 @@ func (r *categoryRepository) Delete(ctx context.Context, id int64) error {
 	return err
 }
 
-func (r *categoryRepository) List(ctx context.Context, page, pageSize int) ([]*models.Category, int, error) {
-	offset := (page - 1) * pageSize
+func (r *categoryRepository) List(ctx context.Context, filter *CategoryFilter) ([]models.Category, error) {
+	query := `SELECT id, name, slug, description, parent_id, sort_order, is_active, created_at, updated_at 
+	          FROM categories WHERE 1=1`
+	args := []interface{}{}
+
+	if filter != nil {
+		if filter.IsActive != nil {
+			query += " AND is_active = ?"
+			args = append(args, *filter.IsActive)
+		}
+		if filter.ParentID != nil {
+			query += " AND parent_id = ?"
+			args = append(args, *filter.ParentID)
+		}
+	}
+
+	query += " ORDER BY sort_order, name"
+
+	rows, err := r.db.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	categories := []models.Category{}
+	for rows.Next() {
+		var category models.Category
+		if err := rows.Scan(&category.ID, &category.Name, &category.Slug, &category.Description,
+			&category.ParentID, &category.SortOrder, &category.IsActive,
+			&category.CreatedAt, &category.UpdatedAt); err != nil {
+			return nil, err
+		}
+		categories = append(categories, category)
+	}
+
+	return categories, rows.Err()
+}
+
+func (r *categoryRepository) ListWithTotal(ctx context.Context, filter *CategoryFilter) ([]models.Category, int, error) {
+	// Build count query
+	countQuery := `SELECT COUNT(*) FROM categories WHERE 1=1`
+	args := []interface{}{}
+
+	if filter != nil {
+		if filter.IsActive != nil {
+			countQuery += " AND is_active = ?"
+			args = append(args, *filter.IsActive)
+		}
+	}
 
 	var total int
-	err := r.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM categories`).Scan(&total)
+	err := r.db.QueryRowContext(ctx, countQuery, args...).Scan(&total)
 	if err != nil {
 		return nil, 0, err
 	}
 
-	rows, err := r.db.QueryContext(ctx,
-		`SELECT id, name, slug, description, parent_id, sort_order, is_active, created_at, updated_at 
-		 FROM categories ORDER BY sort_order, name LIMIT ? OFFSET ?`,
-		pageSize, offset)
+	// Build list query
+	query := `SELECT id, name, slug, description, parent_id, sort_order, is_active, created_at, updated_at 
+	          FROM categories WHERE 1=1`
+	args = []interface{}{}
+
+	if filter != nil {
+		if filter.IsActive != nil {
+			query += " AND is_active = ?"
+			args = append(args, *filter.IsActive)
+		}
+	}
+
+	query += " ORDER BY sort_order, name"
+
+	if filter != nil && filter.Page > 0 && filter.PageSize > 0 {
+		offset := (filter.Page - 1) * filter.PageSize
+		query += " LIMIT ? OFFSET ?"
+		args = append(args, filter.PageSize, offset)
+	}
+
+	rows, err := r.db.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, 0, err
 	}
 	defer rows.Close()
 
-	categories := make([]*models.Category, 0)
+	categories := []models.Category{}
 	for rows.Next() {
-		category := &models.Category{}
+		var category models.Category
 		if err := rows.Scan(&category.ID, &category.Name, &category.Slug, &category.Description,
 			&category.ParentID, &category.SortOrder, &category.IsActive,
 			&category.CreatedAt, &category.UpdatedAt); err != nil {

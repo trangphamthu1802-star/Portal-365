@@ -135,14 +135,23 @@ type MenuItem struct {
 	Target    string `json:"target" db:"target"` // _self, _blank
 }
 
+type PageStatus string
+
+const (
+	PageStatusDraft     PageStatus = "draft"
+	PageStatusPublished PageStatus = "published"
+)
+
 type Page struct {
 	ID             int64      `json:"id" db:"id"`
 	Title          string     `json:"title" db:"title"`
 	Slug           string     `json:"slug" db:"slug"`
 	Group          string     `json:"group" db:"group_name"`                // introduction, about, etc.
+	Key            string     `json:"key" db:"key"`                         // unique within group: history, organization, etc.
 	Content        string     `json:"content" db:"content"`                 // HTML content
-	Status         string     `json:"status" db:"status"`                   // draft, published
+	Status         PageStatus `json:"status" db:"status"`                   // draft, published
 	Order          int        `json:"order" db:"sort_order"`                // for menu ordering
+	ViewCount      int64      `json:"view_count" db:"view_count"`           // page views
 	HeroImageURL   *string    `json:"hero_image_url" db:"hero_image_url"`   // optional
 	SeoTitle       *string    `json:"seo_title" db:"seo_title"`             // optional
 	SeoDescription *string    `json:"seo_description" db:"seo_description"` // optional
@@ -197,4 +206,47 @@ type ViewLog struct {
 	IPAddress string    `db:"ip_address"`
 	UserAgent string    `db:"user_agent"`
 	ViewedAt  time.Time `db:"viewed_at"`
+}
+
+// Document represents a document in the document library (Kho văn bản)
+type Document struct {
+	ID          int64      `json:"id" db:"id"`
+	Title       string     `json:"title" db:"title"`
+	Slug        string     `json:"slug" db:"slug"`
+	Description string     `json:"description" db:"description"`
+	CategoryID  int64      `json:"category_id" db:"category_id"`
+	FileURL     string     `json:"file_url" db:"file_url"`
+	FileName    string     `json:"file_name" db:"file_name"`
+	FileSize    int64      `json:"file_size" db:"file_size"`
+	FileType    string     `json:"file_type" db:"file_type"`     // pdf, doc, docx, xls, xlsx
+	DocumentNo  string     `json:"document_no" db:"document_no"` // Số văn bản
+	IssuedDate  *time.Time `json:"issued_date" db:"issued_date"` // Ngày ban hành
+	UploadedBy  int64      `json:"uploaded_by" db:"uploaded_by"`
+	ViewCount   int64      `json:"view_count" db:"view_count"`
+	Status      string     `json:"status" db:"status"` // draft, published
+	PublishedAt *time.Time `json:"published_at" db:"published_at"`
+	CreatedAt   time.Time  `json:"created_at" db:"created_at"`
+	UpdatedAt   time.Time  `json:"updated_at" db:"updated_at"`
+}
+
+// MediaItem represents a media file (video/image) in the media library
+type MediaItem struct {
+	ID           int64      `json:"id" db:"id"`
+	Title        string     `json:"title" db:"title"`
+	Slug         string     `json:"slug" db:"slug"`
+	Description  string     `json:"description" db:"description"`
+	CategoryID   int64      `json:"category_id" db:"category_id"`
+	MediaType    string     `json:"media_type" db:"media_type"` // video, image
+	URL          string     `json:"url" db:"url"`
+	ThumbnailURL string     `json:"thumbnail_url" db:"thumbnail_url"`
+	FileSize     int64      `json:"file_size" db:"file_size"`
+	Duration     int        `json:"duration" db:"duration"` // For videos (seconds)
+	Width        int        `json:"width" db:"width"`
+	Height       int        `json:"height" db:"height"`
+	UploadedBy   int64      `json:"uploaded_by" db:"uploaded_by"`
+	ViewCount    int64      `json:"view_count" db:"view_count"`
+	Status       string     `json:"status" db:"status"` // draft, published
+	PublishedAt  *time.Time `json:"published_at" db:"published_at"`
+	CreatedAt    time.Time  `json:"created_at" db:"created_at"`
+	UpdatedAt    time.Time  `json:"updated_at" db:"updated_at"`
 }

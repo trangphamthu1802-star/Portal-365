@@ -1,6 +1,9 @@
 import { useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { apiClient } from '../lib/api';
+import { apiClient } from '../lib/apiClient';
+import Header from '../components/Header';
+import DynamicNavbar from '../components/DynamicNavbar';
+import SiteFooter from '../components/layout/SiteFooter';
 
 export default function ArticlePage() {
   const { slug } = useParams();
@@ -18,13 +21,8 @@ export default function ArticlePage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <header className="bg-white shadow">
-        <div className="max-w-4xl mx-auto px-4 py-6">
-          <a href="/" className="text-blue-600 hover:text-blue-800">
-            ← Back to Home
-          </a>
-        </div>
-      </header>
+      <Header />
+      <DynamicNavbar />
 
       <main className="max-w-4xl mx-auto px-4 py-8">
         <article className="bg-white rounded-lg shadow-md p-8">
@@ -70,6 +68,8 @@ export default function ArticlePage() {
           )}
         </article>
       </main>
+
+      <SiteFooter />
     </div>
   );
 }

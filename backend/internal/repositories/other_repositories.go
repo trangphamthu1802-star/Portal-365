@@ -337,9 +337,12 @@ type PageRepository interface {
 	Create(ctx context.Context, page *models.Page) error
 	GetByID(ctx context.Context, id int64) (*models.Page, error)
 	GetBySlug(ctx context.Context, slug string) (*models.Page, error)
+	GetByGroupAndKey(ctx context.Context, group, key string) (*models.Page, error)
 	Update(ctx context.Context, page *models.Page) error
+	UpdateByKey(ctx context.Context, group, key string, page *models.Page) error
 	Delete(ctx context.Context, id int64) error
 	List(ctx context.Context, group *string, status *string) ([]*models.Page, error)
+	IncrementViewCount(ctx context.Context, id int64) error
 }
 
 type pageRepository struct {
@@ -352,9 +355,9 @@ func NewPageRepository(db *sql.DB) PageRepository {
 
 func (r *pageRepository) Create(ctx context.Context, page *models.Page) error {
 	result, err := r.db.ExecContext(ctx,
-		`INSERT INTO pages (title, slug, group_name, content, status, sort_order, hero_image_url, seo_title, seo_description, published_at, is_active) 
-		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		page.Title, page.Slug, page.Group, page.Content, page.Status, page.Order,
+		`INSERT INTO pages (title, slug, group_name, key, content, status, sort_order, view_count, hero_image_url, seo_title, seo_description, published_at, is_active) 
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		page.Title, page.Slug, page.Group, page.Key, page.Content, page.Status, page.Order, page.ViewCount,
 		page.HeroImageURL, page.SeoTitle, page.SeoDescription, page.PublishedAt, page.IsActive)
 	if err != nil {
 		return err
@@ -366,10 +369,10 @@ func (r *pageRepository) Create(ctx context.Context, page *models.Page) error {
 func (r *pageRepository) GetByID(ctx context.Context, id int64) (*models.Page, error) {
 	page := &models.Page{}
 	err := r.db.QueryRowContext(ctx,
-		`SELECT id, title, slug, group_name, content, status, sort_order, hero_image_url, seo_title, seo_description, 
+		`SELECT id, title, slug, group_name, key, content, status, sort_order, view_count, hero_image_url, seo_title, seo_description, 
 		        published_at, is_active, created_at, updated_at 
 		 FROM pages WHERE id = ?`, id).Scan(
-		&page.ID, &page.Title, &page.Slug, &page.Group, &page.Content, &page.Status, &page.Order,
+		&page.ID, &page.Title, &page.Slug, &page.Group, &page.Key, &page.Content, &page.Status, &page.Order, &page.ViewCount,
 		&page.HeroImageURL, &page.SeoTitle, &page.SeoDescription, &page.PublishedAt,
 		&page.IsActive, &page.CreatedAt, &page.UpdatedAt)
 	if err != nil {
@@ -381,10 +384,25 @@ func (r *pageRepository) GetByID(ctx context.Context, id int64) (*models.Page, e
 func (r *pageRepository) GetBySlug(ctx context.Context, slug string) (*models.Page, error) {
 	page := &models.Page{}
 	err := r.db.QueryRowContext(ctx,
-		`SELECT id, title, slug, group_name, content, status, sort_order, hero_image_url, seo_title, seo_description,
+		`SELECT id, title, slug, group_name, key, content, status, sort_order, view_count, hero_image_url, seo_title, seo_description,
 		        published_at, is_active, created_at, updated_at 
 		 FROM pages WHERE slug = ?`, slug).Scan(
-		&page.ID, &page.Title, &page.Slug, &page.Group, &page.Content, &page.Status, &page.Order,
+		&page.ID, &page.Title, &page.Slug, &page.Group, &page.Key, &page.Content, &page.Status, &page.Order, &page.ViewCount,
+		&page.HeroImageURL, &page.SeoTitle, &page.SeoDescription, &page.PublishedAt,
+		&page.IsActive, &page.CreatedAt, &page.UpdatedAt)
+	if err != nil {
+		return nil, err
+	}
+	return page, nil
+}
+
+func (r *pageRepository) GetByGroupAndKey(ctx context.Context, group, key string) (*models.Page, error) {
+	page := &models.Page{}
+	err := r.db.QueryRowContext(ctx,
+		`SELECT id, title, slug, group_name, key, content, status, sort_order, view_count, hero_image_url, seo_title, seo_description,
+		        published_at, is_active, created_at, updated_at 
+		 FROM pages WHERE group_name = ? AND key = ?`, group, key).Scan(
+		&page.ID, &page.Title, &page.Slug, &page.Group, &page.Key, &page.Content, &page.Status, &page.Order, &page.ViewCount,
 		&page.HeroImageURL, &page.SeoTitle, &page.SeoDescription, &page.PublishedAt,
 		&page.IsActive, &page.CreatedAt, &page.UpdatedAt)
 	if err != nil {
@@ -395,12 +413,28 @@ func (r *pageRepository) GetBySlug(ctx context.Context, slug string) (*models.Pa
 
 func (r *pageRepository) Update(ctx context.Context, page *models.Page) error {
 	_, err := r.db.ExecContext(ctx,
-		`UPDATE pages SET title = ?, slug = ?, group_name = ?, content = ?, status = ?, sort_order = ?,
+		`UPDATE pages SET title = ?, slug = ?, group_name = ?, key = ?, content = ?, status = ?, sort_order = ?,
 		        hero_image_url = ?, seo_title = ?, seo_description = ?, published_at = ?, is_active = ?, 
 		        updated_at = CURRENT_TIMESTAMP 
 		 WHERE id = ?`,
-		page.Title, page.Slug, page.Group, page.Content, page.Status, page.Order,
+		page.Title, page.Slug, page.Group, page.Key, page.Content, page.Status, page.Order,
 		page.HeroImageURL, page.SeoTitle, page.SeoDescription, page.PublishedAt, page.IsActive, page.ID)
+	return err
+}
+
+func (r *pageRepository) UpdateByKey(ctx context.Context, group, key string, page *models.Page) error {
+	_, err := r.db.ExecContext(ctx,
+		`UPDATE pages SET title = COALESCE(NULLIF(?, ''), title),
+		        content = COALESCE(NULLIF(?, ''), content),
+		        status = COALESCE(NULLIF(?, ''), status),
+		        sort_order = COALESCE(?, sort_order),
+		        hero_image_url = ?,
+		        seo_title = ?,
+		        seo_description = ?,
+		        updated_at = CURRENT_TIMESTAMP 
+		 WHERE group_name = ? AND key = ?`,
+		page.Title, page.Content, page.Status, page.Order,
+		page.HeroImageURL, page.SeoTitle, page.SeoDescription, group, key)
 	return err
 }
 
@@ -410,7 +444,7 @@ func (r *pageRepository) Delete(ctx context.Context, id int64) error {
 }
 
 func (r *pageRepository) List(ctx context.Context, group *string, status *string) ([]*models.Page, error) {
-	query := `SELECT id, title, slug, group_name, content, status, sort_order, hero_image_url, seo_title, seo_description,
+	query := `SELECT id, title, slug, group_name, key, content, status, sort_order, view_count, hero_image_url, seo_title, seo_description,
 	                 published_at, is_active, created_at, updated_at 
 	          FROM pages WHERE 1=1`
 	args := []interface{}{}
@@ -435,8 +469,8 @@ func (r *pageRepository) List(ctx context.Context, group *string, status *string
 	pages := make([]*models.Page, 0)
 	for rows.Next() {
 		page := &models.Page{}
-		if err := rows.Scan(&page.ID, &page.Title, &page.Slug, &page.Group, &page.Content,
-			&page.Status, &page.Order, &page.HeroImageURL, &page.SeoTitle, &page.SeoDescription,
+		if err := rows.Scan(&page.ID, &page.Title, &page.Slug, &page.Group, &page.Key, &page.Content,
+			&page.Status, &page.Order, &page.ViewCount, &page.HeroImageURL, &page.SeoTitle, &page.SeoDescription,
 			&page.PublishedAt, &page.IsActive, &page.CreatedAt, &page.UpdatedAt); err != nil {
 			return nil, err
 		}
@@ -444,6 +478,11 @@ func (r *pageRepository) List(ctx context.Context, group *string, status *string
 	}
 
 	return pages, rows.Err()
+}
+
+func (r *pageRepository) IncrementViewCount(ctx context.Context, id int64) error {
+	_, err := r.db.ExecContext(ctx, `UPDATE pages SET view_count = view_count + 1 WHERE id = ?`, id)
+	return err
 }
 
 type BannerRepository interface {

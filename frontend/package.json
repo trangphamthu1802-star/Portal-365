@@ -8,23 +8,32 @@
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "generate:api": "swagger-typescript-api -p http://localhost:8080/swagger/doc.json -o ./src/api -n api.ts"
+    "generate:api": "npx swagger-typescript-api generate -p ../backend/docs/swagger/swagger.json -o ./src/api -n api.ts --axios --modular --extract-request-params --extract-response-body --unwrap-response-data",
+    "postinstall": "node -e \"require('fs').cpSync('node_modules/tinymce', 'public/tinymce', {recursive:true, force:true})\""
   },
   "dependencies": {
     "@tanstack/react-query": "^5.90.6",
+    "@tinymce/tinymce-react": "^6.3.0",
+    "@tiptap/extension-image": "^3.10.2",
+    "@tiptap/extension-link": "^3.10.2",
+    "@tiptap/react": "^3.10.2",
+    "@tiptap/starter-kit": "^3.10.2",
     "autoprefixer": "^10.4.21",
     "axios": "^1.13.1",
+    "dompurify": "^3.3.0",
     "lucide-react": "^0.552.0",
     "postcss": "^8.5.6",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
     "react-router-dom": "^7.9.5",
     "swagger-typescript-api": "^13.2.16",
-    "tailwindcss": "^4.1.16"
+    "tailwindcss": "^4.1.16",
+    "tinymce": "^8.2.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.36.0",
     "@tailwindcss/postcss": "^4.1.16",
+    "@types/dompurify": "^3.0.5",
     "@types/node": "^24.6.0",
     "@types/react": "^19.1.16",
     "@types/react-dom": "^19.1.9",

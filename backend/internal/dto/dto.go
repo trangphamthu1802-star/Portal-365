@@ -1,6 +1,65 @@
 package dto
 
-import "time"
+import (
+	"encoding/json"
+	"strings"
+	"time"
+)
+
+// FlexibleTime handles multiple datetime formats from frontend
+type FlexibleTime struct {
+	time.Time
+}
+
+// UnmarshalJSON implements json.Unmarshaler to support multiple datetime formats
+func (ft *FlexibleTime) UnmarshalJSON(b []byte) error {
+	s := strings.Trim(string(b), "\"")
+	if s == "null" || s == "" {
+		ft.Time = time.Time{}
+		return nil
+	}
+
+	// Try multiple formats
+	formats := []string{
+		time.RFC3339,          // 2006-01-02T15:04:05Z07:00
+		"2006-01-02T15:04:05", // Without timezone
+		"2006-01-02T15:04",    // datetime-local format (from HTML input)
+		"2006-01-02 15:04:05", // Common format
+		"2006-01-02 15:04",    // Without seconds
+		"2006-01-02",          // Date only
+	}
+
+	var err error
+	for _, format := range formats {
+		ft.Time, err = time.Parse(format, s)
+		if err == nil {
+			// If no timezone, assume local/UTC
+			if ft.Time.Location() == time.UTC && !strings.Contains(s, "Z") {
+				ft.Time = ft.Time.In(time.Local)
+			}
+			return nil
+		}
+	}
+
+	return err
+}
+
+// MarshalJSON implements json.Marshaler
+func (ft FlexibleTime) MarshalJSON() ([]byte, error) {
+	if ft.Time.IsZero() {
+		return []byte("null"), nil
+	}
+	return json.Marshal(ft.Time.Format(time.RFC3339))
+}
+
+// ToTimePtr converts FlexibleTime to *time.Time
+func (ft *FlexibleTime) ToTimePtr() *time.Time {
+	if ft == nil || ft.Time.IsZero() {
+		return nil
+	}
+	t := ft.Time
+	return &t
+}
 
 // Common
 type PaginationResponse struct {
@@ -99,48 +158,66 @@ type CreateTagRequest struct {
 
 // Article
 type CreateArticleRequest struct {
-	Title         string     `json:"title" binding:"required"`
-	Slug          string     `json:"slug" binding:"required"`
-	Summary       string     `json:"summary"`
-	Content       string     `json:"content" binding:"required"`
-	FeaturedImage string     `json:"featured_image"`
-	CategoryID    int64      `json:"category_id" binding:"required"`
-	TagIDs        []int64    `json:"tag_ids"`
-	IsFeatured    bool       `json:"is_featured"`
-	ScheduledAt   *time.Time `json:"scheduled_at"`
+	Title         string        `json:"title" binding:"required"`
+	Slug          string        `json:"slug"` // Auto-generated from title if empty
+	Summary       string        `json:"summary"`
+	Content       string        `json:"content" binding:"required"`
+	FeaturedImage string        `json:"featured_image"`
+	CategoryID    int64         `json:"category_id" binding:"required"`
+	TagIDs        []int64       `json:"tag_ids"`
+	IsFeatured    bool          `json:"is_featured"`
+	ScheduledAt   *FlexibleTime `json:"scheduled_at"`
 }
 
 type UpdateArticleRequest struct {
-	Title         string     `json:"title" binding:"required"`
-	Slug          string     `json:"slug" binding:"required"`
-	Summary       string     `json:"summary"`
-	Content       string     `json:"content" binding:"required"`
-	FeaturedImage string     `json:"featured_image"`
-	CategoryID    int64      `json:"category_id" binding:"required"`
-	TagIDs        []int64    `json:"tag_ids"`
-	IsFeatured    bool       `json:"is_featured"`
-	ScheduledAt   *time.Time `json:"scheduled_at"`
+	Title         string        `json:"title" binding:"required"`
+	Slug          string        `json:"slug"` // Auto-generated from title if empty
+	Summary       string        `json:"summary"`
+	Content       string        `json:"content" binding:"required"`
+	FeaturedImage string        `json:"featured_image"`
+	CategoryID    int64         `json:"category_id" binding:"required"`
+	TagIDs        []int64       `json:"tag_ids"`
+	IsFeatured    bool          `json:"is_featured"`
+	ScheduledAt   *FlexibleTime `json:"scheduled_at"`
 }
 
 type ArticleResponse struct {
-	ID            int64      `json:"id"`
-	Title         string     `json:"title"`
-	Slug          string     `json:"slug"`
-	Summary       string     `json:"summary"`
-	Content       string     `json:"content"`
-	FeaturedImage string     `json:"featured_image"`
-	AuthorID      int64      `json:"author_id"`
-	AuthorName    string     `json:"author_name,omitempty"`
-	CategoryID    int64      `json:"category_id"`
-	CategoryName  string     `json:"category_name,omitempty"`
-	Status        string     `json:"status"`
-	ViewCount     int64      `json:"view_count"`
-	IsFeatured    bool       `json:"is_featured"`
-	Tags          []string   `json:"tags,omitempty"`
-	PublishedAt   *time.Time `json:"published_at"`
-	ScheduledAt   *time.Time `json:"scheduled_at"`
-	CreatedAt     time.Time  `json:"created_at"`
-	UpdatedAt     time.Time  `json:"updated_at"`
+	ID            int64             `json:"id"`
+	Title         string            `json:"title"`
+	Slug          string            `json:"slug"`
+	Summary       string            `json:"summary"`
+	Content       string            `json:"content"`
+	FeaturedImage string            `json:"featured_image"`
+	AuthorID      int64             `json:"author_id"`
+	AuthorName    string            `json:"author_name,omitempty"`
+	CategoryID    int64             `json:"category_id"`
+	CategoryName  string            `json:"category_name,omitempty"`
+	Category      *CategoryResponse `json:"category,omitempty"` // Full category object with parent info
+	Status        string            `json:"status"`
+	ViewCount     int64             `json:"view_count"`
+	IsFeatured    bool              `json:"is_featured"`
+	Tags          []TagResponse     `json:"tags,omitempty"` // Full tag objects
+	PublishedAt   *time.Time        `json:"published_at"`
+	ScheduledAt   *time.Time        `json:"scheduled_at"`
+	CreatedAt     time.Time         `json:"created_at"`
+	UpdatedAt     time.Time         `json:"updated_at"`
+}
+
+type CategoryResponse struct {
+	ID          int64   `json:"id"`
+	Name        string  `json:"name"`
+	Slug        string  `json:"slug"`
+	Description string  `json:"description,omitempty"`
+	ParentID    *int64  `json:"parent_id,omitempty"`
+	ParentSlug  *string `json:"parent_slug,omitempty"` // Include parent slug for filtering
+	SortOrder   int     `json:"sort_order"`
+	IsActive    bool    `json:"is_active"`
+}
+
+type TagResponse struct {
+	ID   int64  `json:"id"`
+	Name string `json:"name"`
+	Slug string `json:"slug"`
 }
 
 // Comment
@@ -174,6 +251,17 @@ type UpdatePageRequest struct {
 	SeoTitle       *string `json:"seo_title"`
 	SeoDescription *string `json:"seo_description"`
 	IsActive       bool    `json:"is_active"`
+}
+
+// Introduction page update (optional fields)
+type UpdateIntroPageRequest struct {
+	Title          *string `json:"title"`
+	Content        *string `json:"content"`
+	Status         *string `json:"status"`
+	Order          *int    `json:"order"`
+	HeroImageURL   *string `json:"hero_image_url"`
+	SeoTitle       *string `json:"seo_title"`
+	SeoDescription *string `json:"seo_description"`
 }
 
 // Menu

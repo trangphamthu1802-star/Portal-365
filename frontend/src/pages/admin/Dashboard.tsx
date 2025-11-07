@@ -63,10 +63,10 @@ export default function AdminDashboard() {
               <span className="text-indigo-600 font-semibold">📋 Introduction</span>
             </a>
             <a
-              href="/admin/activities"
+              href="/admin/news"
               className="block p-4 border-2 border-cyan-600 rounded-lg text-center hover:bg-cyan-50 transition"
             >
-              <span className="text-cyan-600 font-semibold">🎯 Activities</span>
+              <span className="text-cyan-600 font-semibold">📢 News</span>
             </a>
             <a
               href="/admin/categories"

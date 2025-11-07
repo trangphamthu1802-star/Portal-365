@@ -151,6 +151,13 @@ func (r *userRepository) GetRoles(ctx context.Context, userID int64) ([]*models.
 }
 
 func (r *userRepository) SaveRefreshToken(ctx context.Context, token *models.RefreshToken) error {
+	// Delete old refresh tokens for this user first
+	_, err := r.db.ExecContext(ctx, `DELETE FROM refresh_tokens WHERE user_id = ?`, token.UserID)
+	if err != nil {
+		return err
+	}
+
+	// Insert new refresh token
 	result, err := r.db.ExecContext(ctx,
 		`INSERT INTO refresh_tokens (user_id, token, expires_at) VALUES (?, ?, ?)`,
 		token.UserID, token.Token, token.ExpiresAt)

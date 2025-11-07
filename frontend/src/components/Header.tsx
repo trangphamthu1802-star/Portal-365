@@ -29,6 +29,95 @@ export default function Header() {
         </div>
       </div>
 
+      <style>{`
+        @keyframes fire {
+          0%, 100% {
+            text-shadow: 
+              0 0 4px #fff,
+              0 0 11px #fff,
+              0 0 19px #fff,
+              0 0 40px #ff9500,
+              0 0 70px #ff6c00,
+              0 0 90px #ff6c00,
+              0 0 140px #ff6c00,
+              0 0 180px #ff6c00,
+              -1px -1px 3px #000,
+              1px -1px 3px #000,
+              -1px 1px 3px #000,
+              1px 1px 3px #000;
+          }
+          
+          25% {
+            text-shadow: 
+              0 0 5px #fff,
+              0 0 13px #fff,
+              0 0 22px #fff,
+              0 0 50px #ff6c00,
+              0 0 80px #ff9500,
+              0 0 100px #ff9500,
+              0 0 150px #ff6c00,
+              0 0 200px #ff6c00,
+              -1px -1px 3px #000,
+              1px -1px 3px #000,
+              -1px 1px 3px #000,
+              1px 1px 3px #000;
+          }
+          
+          50% {
+            text-shadow: 
+              0 0 3px #fff,
+              0 0 10px #fff,
+              0 0 18px #fff,
+              0 0 45px #ff9500,
+              0 0 75px #ff6c00,
+              0 0 95px #ff6c00,
+              0 0 145px #ff6c00,
+              0 0 190px #ff6c00,
+              -1px -1px 3px #000,
+              1px -1px 3px #000,
+              -1px 1px 3px #000,
+              1px 1px 3px #000;
+          }
+          
+          75% {
+            text-shadow: 
+              0 0 6px #fff,
+              0 0 14px #fff,
+              0 0 23px #fff,
+              0 0 55px #ff6c00,
+              0 0 85px #ff9500,
+              0 0 105px #ff9500,
+              0 0 155px #ff6c00,
+              0 0 205px #ff6c00,
+              -1px -1px 3px #000,
+              1px -1px 3px #000,
+              -1px 1px 3px #000,
+              1px 1px 3px #000;
+          }
+        }
+        
+        @keyframes flicker {
+          0%, 100% { opacity: 1; }
+          10% { opacity: 0.95; }
+          20% { opacity: 0.9; }
+          30% { opacity: 0.95; }
+          40% { opacity: 0.92; }
+          50% { opacity: 0.88; }
+          60% { opacity: 0.93; }
+          70% { opacity: 0.9; }
+          80% { opacity: 0.94; }
+          90% { opacity: 0.91; }
+        }
+
+        .fire-text {
+          color: #FFFFFF;
+          font-weight: 900;
+          -webkit-font-smoothing: antialiased;
+          -moz-osx-font-smoothing: grayscale;
+          text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+        }
+      `}</style>
+
       {/* Main header - Logo and Title Section with Horizontal Banner Strip */}
       <div className="relative overflow-hidden bg-white">
         {/* Horizontal Banner Strip - bautroi covers half, others share remaining half */}
@@ -89,20 +178,29 @@ export default function Header() {
               />
               
               {/* Title and Motto */}
-              <div className="space-y-2">
+              <div className="space-y-3">
                 <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-[#FFD700] tracking-wide" 
                     style={{ 
                       textShadow: '0 0 20px rgba(0,0,0,0.8), 0 0 40px rgba(0,0,0,0.6), 2px 2px 4px rgba(0,0,0,0.9), -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000'
                     }}>
                   SƯ ĐOÀN 365
                 </h1>
-                <p className="text-sm sm:text-base lg:text-lg font-semibold italic leading-relaxed"
-                   style={{ 
-                     color: '#00BFFF',
-                     textShadow: '0 0 10px rgba(0,0,0,0.9), 1px 1px 3px rgba(0,0,0,1), -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000'
-                   }}>
-                  Cơ động chiến đấu, chốt trụ kiên cường, đánh thắng địch trong mọi tình huống
-                </p>
+                <div className="relative space-y-1">
+                  <p 
+                    className="fire-text text-base sm:text-lg lg:text-xl italic leading-tight whitespace-nowrap"
+                    style={{ 
+                      letterSpacing: '0.5px'
+                    }}>
+                    Cơ động chiến đấu, chốt trụ kiên cường,
+                  </p>
+                  <p 
+                    className="fire-text text-base sm:text-lg lg:text-xl italic leading-tight whitespace-nowrap"
+                    style={{ 
+                      letterSpacing: '0.5px'
+                    }}>
+                    đánh thắng địch trong mọi tình huống
+                  </p>
+                </div>
               </div>
             </Link>
           </div>

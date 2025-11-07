@@ -52,8 +52,9 @@ definitions:
       is_featured:
         type: boolean
       scheduled_at:
-        type: string
+        $ref: '#/definitions/dto.FlexibleTime'
       slug:
+        description: Auto-generated from title if empty
         type: string
       summary:
         type: string
@@ -66,7 +67,6 @@ definitions:
     required:
     - category_id
     - content
-    - slug
     - title
     type: object
   dto.CreateCategoryRequest:
@@ -140,6 +140,11 @@ definitions:
       error:
         $ref: '#/definitions/dto.ErrorDetail'
     type: object
+  dto.FlexibleTime:
+    properties:
+      time.Time:
+        type: string
+    type: object
   dto.LoginRequest:
     properties:
       email:
@@ -196,8 +201,9 @@ definitions:
       is_featured:
         type: boolean
       scheduled_at:
-        type: string
+        $ref: '#/definitions/dto.FlexibleTime'
       slug:
+        description: Auto-generated from title if empty
         type: string
       summary:
         type: string
@@ -210,7 +216,6 @@ definitions:
     required:
     - category_id
     - content
-    - slug
     - title
     type: object
   dto.UpdateCategoryRequest:
@@ -282,6 +287,36 @@ definitions:
           type: string
         type: array
     type: object
+  handlers.CategorySection:
+    properties:
+      articles:
+        items:
+          $ref: '#/definitions/models.Article'
+        type: array
+      category:
+        $ref: '#/definitions/models.Category'
+    type: object
+  handlers.HomeResponse:
+    properties:
+      breaking:
+        items:
+          $ref: '#/definitions/models.Article'
+        type: array
+      by_category:
+        items:
+          $ref: '#/definitions/handlers.CategorySection'
+        type: array
+      featured:
+        items:
+          $ref: '#/definitions/models.Article'
+        type: array
+      hero:
+        $ref: '#/definitions/models.Article'
+      most_read:
+        items:
+          $ref: '#/definitions/models.Article'
+        type: array
+    type: object
   middleware.ErrorDetail:
     properties:
       code:
@@ -342,6 +377,32 @@ definitions:
     - StatusPublished
     - StatusHidden
     - StatusRejected
+  models.Banner:
+    properties:
+      created_at:
+        type: string
+      end_date:
+        type: string
+      id:
+        type: integer
+      image_url:
+        type: string
+      is_active:
+        type: boolean
+      link_url:
+        type: string
+      placement:
+        description: home_hero, sidebar, etc.
+        type: string
+      sort_order:
+        type: integer
+      start_date:
+        type: string
+      title:
+        type: string
+      updated_at:
+        type: string
+    type: object
   models.Category:
     properties:
       created_at:
@@ -363,6 +424,89 @@ definitions:
       updated_at:
         type: string
     type: object
+  models.Document:
+    properties:
+      category_id:
+        type: integer
+      created_at:
+        type: string
+      description:
+        type: string
+      document_no:
+        description: Số văn bản
+        type: string
+      file_name:
+        type: string
+      file_size:
+        type: integer
+      file_type:
+        description: pdf, doc, docx, xls, xlsx
+        type: string
+      file_url:
+        type: string
+      id:
+        type: integer
+      issued_date:
+        description: Ngày ban hành
+        type: string
+      published_at:
+        type: string
+      slug:
+        type: string
+      status:
+        description: draft, published
+        type: string
+      title:
+        type: string
+      updated_at:
+        type: string
+      uploaded_by:
+        type: integer
+      view_count:
+        type: integer
+    type: object
+  models.MediaItem:
+    properties:
+      category_id:
+        type: integer
+      created_at:
+        type: string
+      description:
+        type: string
+      duration:
+        description: For videos (seconds)
+        type: integer
+      file_size:
+        type: integer
+      height:
+        type: integer
+      id:
+        type: integer
+      media_type:
+        description: video, image
+        type: string
+      published_at:
+        type: string
+      slug:
+        type: string
+      status:
+        description: draft, published
+        type: string
+      thumbnail_url:
+        type: string
+      title:
+        type: string
+      updated_at:
+        type: string
+      uploaded_by:
+        type: integer
+      url:
+        type: string
+      view_count:
+        type: integer
+      width:
+        type: integer
+    type: object
   models.Page:
     properties:
       content:
@@ -380,6 +524,9 @@ definitions:
         type: integer
       is_active:
         type: boolean
+      key:
+        description: 'unique within group: history, organization, etc.'
+        type: string
       order:
         description: for menu ordering
         type: integer
@@ -394,13 +541,25 @@ definitions:
       slug:
         type: string
       status:
+        allOf:
+        - $ref: '#/definitions/models.PageStatus'
         description: draft, published
-        type: string
       title:
         type: string
       updated_at:
         type: string
+      view_count:
+        description: page views
+        type: integer
     type: object
+  models.PageStatus:
+    enum:
+    - draft
+    - published
+    type: string
+    x-enum-varnames:
+    - PageStatusDraft
+    - PageStatusPublished
   models.Tag:
     properties:
       created_at:
@@ -426,7 +585,491 @@ info:
   title: Portal 365 API
   version: "1.0"
 paths:
-  /activities:
+  /admin/banners:
+    get:
+      description: Get list of all banners with filters (admin only)
+      parameters:
+      - description: Filter by placement
+        in: query
+        name: placement
+        type: string
+      - description: Filter by active status
+        in: query
+        name: active
+        type: boolean
+      - description: Search by title
+        in: query
+        name: q
+        type: string
+      - description: 'Page number (default: 1)'
+        in: query
+        name: page
+        type: integer
+      - description: 'Page size (default: 20, max: 100)'
+        in: query
+        name: page_size
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/dto.SuccessResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/models.Banner'
+                  type: array
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List all banners (Admin)
+      tags:
+      - Banners
+    post:
+      consumes:
+      - application/json
+      description: Create a new banner (admin only)
+      parameters:
+      - description: Banner data
+        in: body
+        name: banner
+        required: true
+        schema:
+          $ref: '#/definitions/models.Banner'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/dto.SuccessResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.Banner'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Create banner (Admin)
+      tags:
+      - Banners
+  /admin/banners/{id}:
+    delete:
+      description: Delete a banner (admin only)
+      parameters:
+      - description: Banner ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete banner (Admin)
+      tags:
+      - Banners
+    get:
+      description: Get single banner by ID (admin only)
+      parameters:
+      - description: Banner ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/dto.SuccessResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.Banner'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get banner by ID (Admin)
+      tags:
+      - Banners
+    put:
+      consumes:
+      - application/json
+      description: Update an existing banner (admin only)
+      parameters:
+      - description: Banner ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Banner data
+        in: body
+        name: banner
+        required: true
+        schema:
+          $ref: '#/definitions/models.Banner'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/dto.SuccessResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.Banner'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update banner (Admin)
+      tags:
+      - Banners
+  /admin/media:
+    get:
+      description: Get list of all media items with filters (admin only)
+      parameters:
+      - description: Media type filter
+        in: query
+        name: media_type
+        type: string
+      - description: Status filter
+        in: query
+        name: status
+        type: string
+      - description: Category ID filter
+        in: query
+        name: category_id
+        type: integer
+      - description: 'Page number (default: 1)'
+        in: query
+        name: page
+        type: integer
+      - description: 'Page size (default: 20, max: 100)'
+        in: query
+        name: page_size
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/dto.SuccessResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/models.MediaItem'
+                  type: array
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List all media items (Admin)
+      tags:
+      - Media
+    post:
+      consumes:
+      - application/json
+      description: Create a new media item (admin only)
+      parameters:
+      - description: Media item data
+        in: body
+        name: media
+        required: true
+        schema:
+          $ref: '#/definitions/models.MediaItem'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/dto.SuccessResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.MediaItem'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Create media item (Admin)
+      tags:
+      - Media
+  /admin/media/{id}:
+    delete:
+      description: Delete a media item (admin only)
+      parameters:
+      - description: Media ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete media item (Admin)
+      tags:
+      - Media
+    get:
+      description: Get single media item by ID (admin only)
+      parameters:
+      - description: Media ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/dto.SuccessResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.MediaItem'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get media item by ID (Admin)
+      tags:
+      - Media
+    put:
+      consumes:
+      - application/json
+      description: Update an existing media item (admin only)
+      parameters:
+      - description: Media ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Media item data
+        in: body
+        name: media
+        required: true
+        schema:
+          $ref: '#/definitions/models.MediaItem'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/dto.SuccessResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.MediaItem'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update media item (Admin)
+      tags:
+      - Media
+  /admin/media/upload:
+    post:
+      consumes:
+      - multipart/form-data
+      description: Upload an image file (JPEG, PNG, WebP) with validation
+      parameters:
+      - description: Image file (max 5MB, min 1200px width)
+        in: formData
+        name: file
+        required: true
+        type: file
+      - description: Media title
+        in: formData
+        name: title
+        type: string
+      - description: Alt text for image
+        in: formData
+        name: alt
+        type: string
+      - description: Category ID
+        in: formData
+        name: category_id
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/dto.SuccessResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.MediaItem'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Upload media file
+      tags:
+      - Media
+  /api/v1/activities:
     get:
       description: Get list of published activities with pagination
       parameters:
@@ -459,7 +1102,7 @@ paths:
       summary: List all activities
       tags:
       - Activities
-  /activities/{slug}:
+  /api/v1/activities/{slug}:
     get:
       description: Get a single activity by its slug
       parameters:
@@ -487,7 +1130,7 @@ paths:
       summary: Get activity by slug
       tags:
       - Activities
-  /admin/activities:
+  /api/v1/admin/activities:
     post:
       consumes:
       - application/json
@@ -524,7 +1167,7 @@ paths:
       summary: Create activity
       tags:
       - Activities (Admin)
-  /admin/activities/{id}:
+  /api/v1/admin/activities/{id}:
     delete:
       description: Delete an activity (Admin only)
       parameters:
@@ -598,7 +1241,7 @@ paths:
       summary: Update activity
       tags:
       - Activities (Admin)
-  /admin/activities/{id}/publish:
+  /api/v1/admin/activities/{id}/publish:
     post:
       description: Publish an activity to make it public
       parameters:
@@ -627,7 +1270,76 @@ paths:
       summary: Publish activity
       tags:
       - Activities (Admin)
-  /admin/articles:
+  /api/v1/admin/articles:
+    get:
+      consumes:
+      - application/json
+      description: Get paginated list of articles with filters (requires authentication)
+      parameters:
+      - default: 1
+        description: Page number
+        in: query
+        name: page
+        type: integer
+      - default: 20
+        description: Page size
+        in: query
+        name: page_size
+        type: integer
+      - description: Filter by category ID
+        in: query
+        name: category_id
+        type: integer
+      - description: Filter by category slug
+        in: query
+        name: category_slug
+        type: string
+      - description: Filter by author ID
+        in: query
+        name: author_id
+        type: integer
+      - description: Filter by status (draft, under_review, published, hidden, rejected)
+        in: query
+        name: status
+        type: string
+      - description: Filter by tag
+        in: query
+        name: tag
+        type: string
+      - description: Search query
+        in: query
+        name: q
+        type: string
+      - default: -published_at
+        description: Sort by field
+        in: query
+        name: sort
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/dto.SuccessResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/models.Article'
+                  type: array
+                pagination:
+                  $ref: '#/definitions/dto.PaginationResponse'
+              type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/middleware.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List articles (Admin)
+      tags:
+      - Articles
     post:
       consumes:
       - application/json
@@ -669,7 +1381,7 @@ paths:
       summary: Create a new article
       tags:
       - Articles (Admin)
-  /admin/articles/{id}:
+  /api/v1/admin/articles/{id}:
     delete:
       description: Permanently delete an article by ID. Requires Admin or Editor role.
       parameters:
@@ -707,6 +1419,41 @@ paths:
       summary: Delete an article
       tags:
       - Articles (Admin)
+    get:
+      consumes:
+      - application/json
+      description: Get a single article by ID (requires authentication)
+      parameters:
+      - description: Article ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/dto.SuccessResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.Article'
+              type: object
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/middleware.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/middleware.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get article by ID (Admin)
+      tags:
+      - Articles
     put:
       consumes:
       - application/json
@@ -757,219 +1504,6 @@ paths:
       summary: Update an existing article
       tags:
       - Articles (Admin)
-  /admin/introduction:
-    post:
-      consumes:
-      - application/json
-      description: Create a new introduction page (Admin only)
-      parameters:
-      - description: Introduction page data
-        in: body
-        name: page
-        required: true
-        schema:
-          $ref: '#/definitions/dto.CreatePageRequest'
-      produces:
-      - application/json
-      responses:
-        "201":
-          description: Created
-          schema:
-            allOf:
-            - $ref: '#/definitions/dto.SuccessResponse'
-            - properties:
-                data:
-                  $ref: '#/definitions/models.Page'
-              type: object
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/middleware.ErrorResponse'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/middleware.ErrorResponse'
-      security:
-      - BearerAuth: []
-      summary: Create introduction page
-      tags:
-      - Introduction (Admin)
-  /admin/introduction/{id}:
-    delete:
-      description: Delete an introduction page (Admin only)
-      parameters:
-      - description: Page ID
-        in: path
-        name: id
-        required: true
-        type: integer
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/dto.SuccessResponse'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/middleware.ErrorResponse'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/middleware.ErrorResponse'
-      security:
-      - BearerAuth: []
-      summary: Delete introduction page
-      tags:
-      - Introduction (Admin)
-    put:
-      consumes:
-      - application/json
-      description: Update an existing introduction page (Admin only)
-      parameters:
-      - description: Page ID
-        in: path
-        name: id
-        required: true
-        type: integer
-      - description: Updated page data
-        in: body
-        name: page
-        required: true
-        schema:
-          $ref: '#/definitions/dto.UpdatePageRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            allOf:
-            - $ref: '#/definitions/dto.SuccessResponse'
-            - properties:
-                data:
-                  $ref: '#/definitions/models.Page'
-              type: object
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/middleware.ErrorResponse'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/middleware.ErrorResponse'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/middleware.ErrorResponse'
-      security:
-      - BearerAuth: []
-      summary: Update introduction page
-      tags:
-      - Introduction (Admin)
-  /api/v1/admin/articles:
-    get:
-      consumes:
-      - application/json
-      description: Get paginated list of articles with filters (requires authentication)
-      parameters:
-      - default: 1
-        description: Page number
-        in: query
-        name: page
-        type: integer
-      - default: 20
-        description: Page size
-        in: query
-        name: page_size
-        type: integer
-      - description: Filter by category ID
-        in: query
-        name: category_id
-        type: integer
-      - description: Filter by author ID
-        in: query
-        name: author_id
-        type: integer
-      - description: Filter by status (draft, under_review, published, hidden, rejected)
-        in: query
-        name: status
-        type: string
-      - description: Filter by tag
-        in: query
-        name: tag
-        type: string
-      - description: Search query
-        in: query
-        name: q
-        type: string
-      - default: -published_at
-        description: Sort by field
-        in: query
-        name: sort
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            allOf:
-            - $ref: '#/definitions/dto.SuccessResponse'
-            - properties:
-                data:
-                  items:
-                    $ref: '#/definitions/models.Article'
-                  type: array
-                pagination:
-                  $ref: '#/definitions/dto.PaginationResponse'
-              type: object
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/middleware.ErrorResponse'
-      security:
-      - BearerAuth: []
-      summary: List articles (Admin)
-      tags:
-      - Articles
-  /api/v1/admin/articles/{id}:
-    get:
-      consumes:
-      - application/json
-      description: Get a single article by ID (requires authentication)
-      parameters:
-      - description: Article ID
-        in: path
-        name: id
-        required: true
-        type: integer
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            allOf:
-            - $ref: '#/definitions/dto.SuccessResponse'
-            - properties:
-                data:
-                  $ref: '#/definitions/models.Article'
-              type: object
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/middleware.ErrorResponse'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/middleware.ErrorResponse'
-      security:
-      - BearerAuth: []
-      summary: Get article by ID (Admin)
-      tags:
-      - Articles
   /api/v1/admin/articles/{id}/approve:
     post:
       consumes:
@@ -1266,6 +1800,184 @@ paths:
       summary: Update a category
       tags:
       - Categories
+  /api/v1/admin/documents:
+    get:
+      consumes:
+      - application/json
+      description: Get all documents with pagination
+      parameters:
+      - default: 1
+        description: Page number
+        in: query
+        name: page
+        type: integer
+      - default: 20
+        description: Page size
+        in: query
+        name: page_size
+        type: integer
+      - description: Filter by status
+        in: query
+        name: status
+        type: string
+      - description: Filter by category
+        in: query
+        name: category_id
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/dto.SuccessResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/models.Document'
+                  type: array
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      security:
+      - Bearer: []
+      summary: List all documents (Admin)
+      tags:
+      - documents
+    post:
+      consumes:
+      - application/json
+      description: Create a new document
+      parameters:
+      - description: Document data
+        in: body
+        name: document
+        required: true
+        schema:
+          $ref: '#/definitions/models.Document'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/dto.SuccessResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.Document'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      security:
+      - Bearer: []
+      summary: Create document (Admin)
+      tags:
+      - documents
+  /api/v1/admin/documents/{id}:
+    delete:
+      description: Delete a document
+      parameters:
+      - description: Document ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/dto.SuccessResponse'
+            - properties:
+                data:
+                  type: string
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      security:
+      - Bearer: []
+      summary: Delete document (Admin)
+      tags:
+      - documents
+    put:
+      consumes:
+      - application/json
+      description: Update an existing document
+      parameters:
+      - description: Document ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Document data
+        in: body
+        name: document
+        required: true
+        schema:
+          $ref: '#/definitions/models.Document'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/dto.SuccessResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.Document'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      security:
+      - Bearer: []
+      summary: Update document (Admin)
+      tags:
+      - documents
   /api/v1/admin/pages:
     post:
       consumes:
@@ -1499,6 +2211,10 @@ paths:
         in: query
         name: category_id
         type: integer
+      - description: Filter by category slug
+        in: query
+        name: category_slug
+        type: string
       - description: Filter by tag
         in: query
         name: tag
@@ -1613,6 +2329,128 @@ paths:
       summary: Get related articles
       tags:
       - Articles
+  /api/v1/auth/login:
+    post:
+      consumes:
+      - application/json
+      description: Authenticate user and return JWT tokens
+      parameters:
+      - description: Login credentials
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.LoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/dto.SuccessResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.LoginResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/middleware.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/middleware.ErrorResponse'
+      summary: User login
+      tags:
+      - auth
+  /api/v1/auth/logout:
+    post:
+      consumes:
+      - application/json
+      description: Invalidate refresh token
+      parameters:
+      - description: Refresh token
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.RefreshTokenRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/middleware.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: User logout
+      tags:
+      - auth
+  /api/v1/auth/me:
+    get:
+      description: Get authenticated user information
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/dto.SuccessResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.UserResponse'
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/middleware.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get current user
+      tags:
+      - auth
+  /api/v1/auth/refresh:
+    post:
+      consumes:
+      - application/json
+      description: Get new access token using refresh token
+      parameters:
+      - description: Refresh token
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.RefreshTokenRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/dto.SuccessResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.LoginResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/middleware.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/middleware.ErrorResponse'
+      summary: Refresh access token
+      tags:
+      - auth
   /api/v1/categories:
     get:
       consumes:
@@ -1673,6 +2511,145 @@ paths:
       summary: Get category by slug
       tags:
       - Categories
+  /api/v1/categories/menu:
+    get:
+      consumes:
+      - application/json
+      description: Returns hierarchical category tree for navigation menu
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.SuccessResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: Get category tree for menu
+      tags:
+      - Categories
+  /api/v1/documents:
+    get:
+      consumes:
+      - application/json
+      description: Get published documents with pagination and filtering
+      parameters:
+      - description: Category ID
+        in: query
+        name: category_id
+        type: integer
+      - default: 1
+        description: Page number
+        in: query
+        name: page
+        type: integer
+      - default: 20
+        description: Page size
+        in: query
+        name: page_size
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/dto.SuccessResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/models.Document'
+                  type: array
+              type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: List documents (Public)
+      tags:
+      - documents
+  /api/v1/documents/{slug}:
+    get:
+      consumes:
+      - application/json
+      description: Get a published document by slug and increment view count
+      parameters:
+      - description: Document slug
+        in: path
+        name: slug
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/dto.SuccessResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.Document'
+              type: object
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: Get document by slug (Public)
+      tags:
+      - documents
+  /api/v1/healthz:
+    get:
+      description: Check if the API is running
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Health check
+      tags:
+      - health
+  /api/v1/home:
+    get:
+      consumes:
+      - application/json
+      description: Get aggregated data for home page sections by category slugs
+      parameters:
+      - description: Comma-separated category slugs
+        example: '"hoat-dong-cua-thu-truong,tin-quan-su"'
+        in: query
+        name: sections
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/dto.SuccessResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/handlers.HomeResponse'
+              type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/middleware.ErrorResponse'
+      summary: Get home page data
+      tags:
+      - Home
   /api/v1/pages:
     get:
       consumes:
@@ -1734,6 +2711,50 @@ paths:
       summary: Get page by slug
       tags:
       - Pages
+  /api/v1/search:
+    get:
+      consumes:
+      - application/json
+      description: Search articles by keyword in title, content, and excerpt
+      parameters:
+      - description: Search keyword
+        in: query
+        name: q
+        required: true
+        type: string
+      - default: 1
+        description: Page number
+        in: query
+        name: page
+        type: integer
+      - default: 20
+        description: Page size
+        in: query
+        name: page_size
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/dto.SuccessResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/models.Article'
+                  type: array
+                pagination:
+                  $ref: '#/definitions/dto.PaginationResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/middleware.ErrorResponse'
+      summary: Search articles
+      tags:
+      - Search
   /api/v1/tags:
     get:
       consumes:
@@ -1794,146 +2815,15 @@ paths:
       summary: Get tag by slug
       tags:
       - Tags
-  /auth/login:
-    post:
-      consumes:
-      - application/json
-      description: Authenticate user and return JWT tokens
-      parameters:
-      - description: Login credentials
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/dto.LoginRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            allOf:
-            - $ref: '#/definitions/dto.SuccessResponse'
-            - properties:
-                data:
-                  $ref: '#/definitions/dto.LoginResponse'
-              type: object
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/middleware.ErrorResponse'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/middleware.ErrorResponse'
-      summary: User login
-      tags:
-      - auth
-  /auth/logout:
-    post:
-      consumes:
-      - application/json
-      description: Invalidate refresh token
-      parameters:
-      - description: Refresh token
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/dto.RefreshTokenRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/dto.SuccessResponse'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/middleware.ErrorResponse'
-      security:
-      - BearerAuth: []
-      summary: User logout
-      tags:
-      - auth
-  /auth/me:
+  /banners:
     get:
-      description: Get authenticated user information
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            allOf:
-            - $ref: '#/definitions/dto.SuccessResponse'
-            - properties:
-                data:
-                  $ref: '#/definitions/dto.UserResponse'
-              type: object
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/middleware.ErrorResponse'
-      security:
-      - BearerAuth: []
-      summary: Get current user
-      tags:
-      - auth
-  /auth/refresh:
-    post:
-      consumes:
-      - application/json
-      description: Get new access token using refresh token
+      description: Get active banners for a specific placement with time window check
       parameters:
-      - description: Refresh token
-        in: body
-        name: request
+      - description: Placement (e.g., home_top, sidebar)
+        in: query
+        name: placement
         required: true
-        schema:
-          $ref: '#/definitions/dto.RefreshTokenRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            allOf:
-            - $ref: '#/definitions/dto.SuccessResponse'
-            - properties:
-                data:
-                  $ref: '#/definitions/dto.LoginResponse'
-              type: object
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/middleware.ErrorResponse'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/middleware.ErrorResponse'
-      summary: Refresh access token
-      tags:
-      - auth
-  /healthz:
-    get:
-      description: Check if the API is running
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-      summary: Health check
-      tags:
-      - health
-  /introduction:
-    get:
-      description: Get list of all introduction pages (public access)
+        type: string
       produces:
       - application/json
       responses:
@@ -1945,17 +2835,62 @@ paths:
             - properties:
                 data:
                   items:
-                    $ref: '#/definitions/models.Page'
+                    $ref: '#/definitions/models.Banner'
                   type: array
               type: object
-      summary: List all introduction pages
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: Get banners by placement (Public)
       tags:
-      - Introduction
-  /introduction/{slug}:
+      - Banners
+  /media:
     get:
-      description: Get a single introduction page by its slug
+      description: Get list of published media items with optional filters
       parameters:
-      - description: Page slug
+      - description: Media type filter (image, video)
+        in: query
+        name: media_type
+        type: string
+      - description: Category ID filter
+        in: query
+        name: category_id
+        type: integer
+      - description: 'Page number (default: 1)'
+        in: query
+        name: page
+        type: integer
+      - description: 'Page size (default: 20, max: 100)'
+        in: query
+        name: page_size
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/dto.SuccessResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/models.MediaItem'
+                  type: array
+              type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: List published media items
+      tags:
+      - Media
+  /media/{slug}:
+    get:
+      description: Get single published media item by slug and increment view count
+      parameters:
+      - description: Media slug
         in: path
         name: slug
         required: true
@@ -1970,15 +2905,19 @@ paths:
             - $ref: '#/definitions/dto.SuccessResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/models.Page'
+                  $ref: '#/definitions/models.MediaItem'
               type: object
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/middleware.ErrorResponse'
-      summary: Get introduction page by slug
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: Get media item by slug
       tags:
-      - Introduction
+      - Media
 securityDefinitions:
   BearerAuth:
     description: Type "Bearer" followed by a space and JWT token.

@@ -3,12 +3,17 @@ package handlers
 import (
 	"database/sql"
 	"net/http"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
+	"unicode"
 
 	"github.com/gin-gonic/gin"
 	"golang.org/x/crypto/bcrypt"
+	"golang.org/x/text/runes"
+	"golang.org/x/text/transform"
+	"golang.org/x/text/unicode/norm"
 
 	"github.com/thieugt95/portal-365/backend/internal/config"
 	"github.com/thieugt95/portal-365/backend/internal/database"
@@ -19,6 +24,32 @@ import (
 )
 
 // Helper functions
+func generateSlug(title string) string {
+	// Convert to lowercase
+	slug := strings.ToLower(title)
+
+	// Remove Vietnamese diacritics
+	t := transform.Chain(norm.NFD, runes.Remove(runes.In(unicode.Mn)), norm.NFC)
+	slug, _, _ = transform.String(t, slug)
+
+	// Replace special Vietnamese characters
+	replacements := map[string]string{
+		"đ": "d", "Đ": "d",
+	}
+	for old, new := range replacements {
+		slug = strings.ReplaceAll(slug, old, new)
+	}
+
+	// Replace non-alphanumeric characters with hyphens
+	reg := regexp.MustCompile("[^a-z0-9]+")
+	slug = reg.ReplaceAllString(slug, "-")
+
+	// Remove leading/trailing hyphens
+	slug = strings.Trim(slug, "-")
+
+	return slug
+}
+
 func getPage(c *gin.Context) int {
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	if page < 1 {
@@ -45,6 +76,98 @@ func getPagination(page, pageSize, total int) *dto.PaginationResponse {
 	}
 }
 
+// toArticleResponse converts Article model to ArticleResponse with category and tags populated
+func (h *ArticleHandler) toArticleResponse(c *gin.Context, article *models.Article) (*dto.ArticleResponse, error) {
+	response := &dto.ArticleResponse{
+		ID:            article.ID,
+		Title:         article.Title,
+		Slug:          article.Slug,
+		Summary:       article.Summary,
+		Content:       article.Content,
+		FeaturedImage: article.FeaturedImage,
+		AuthorID:      article.AuthorID,
+		CategoryID:    article.CategoryID,
+		Status:        string(article.Status),
+		ViewCount:     article.ViewCount,
+		IsFeatured:    article.IsFeatured,
+		PublishedAt:   article.PublishedAt,
+		ScheduledAt:   article.ScheduledAt,
+		CreatedAt:     article.CreatedAt,
+		UpdatedAt:     article.UpdatedAt,
+	}
+
+	// Get category with parent info
+	category, err := h.repos.Categories.GetByID(c.Request.Context(), article.CategoryID)
+	if err == nil && category != nil {
+		response.CategoryName = category.Name
+		categoryResp := &dto.CategoryResponse{
+			ID:          category.ID,
+			Name:        category.Name,
+			Slug:        category.Slug,
+			Description: category.Description,
+			ParentID:    category.ParentID,
+			SortOrder:   category.SortOrder,
+			IsActive:    category.IsActive,
+		}
+
+		// Get parent slug if exists
+		if category.ParentID != nil {
+			parentCat, err := h.repos.Categories.GetByID(c.Request.Context(), *category.ParentID)
+			if err == nil && parentCat != nil {
+				categoryResp.ParentSlug = &parentCat.Slug
+			}
+		}
+		response.Category = categoryResp
+	}
+
+	// Get tags
+	tags, err := h.repos.Articles.GetTags(c.Request.Context(), article.ID)
+	if err == nil && len(tags) > 0 {
+		tagResponses := make([]dto.TagResponse, len(tags))
+		for i, tag := range tags {
+			tagResponses[i] = dto.TagResponse{
+				ID:   tag.ID,
+				Name: tag.Name,
+				Slug: tag.Slug,
+			}
+		}
+		response.Tags = tagResponses
+	}
+
+	return response, nil
+}
+
+// toArticleResponses batch converts multiple articles
+func (h *ArticleHandler) toArticleResponses(c *gin.Context, articles []*models.Article) ([]*dto.ArticleResponse, error) {
+	responses := make([]*dto.ArticleResponse, len(articles))
+	for i, article := range articles {
+		resp, err := h.toArticleResponse(c, article)
+		if err != nil {
+			// Log error but continue
+			responses[i] = &dto.ArticleResponse{
+				ID:            article.ID,
+				Title:         article.Title,
+				Slug:          article.Slug,
+				Summary:       article.Summary,
+				Content:       article.Content,
+				FeaturedImage: article.FeaturedImage,
+				AuthorID:      article.AuthorID,
+				CategoryID:    article.CategoryID,
+				Status:        string(article.Status),
+				ViewCount:     article.ViewCount,
+				IsFeatured:    article.IsFeatured,
+				PublishedAt:   article.PublishedAt,
+				ScheduledAt:   article.ScheduledAt,
+				CreatedAt:     article.CreatedAt,
+				UpdatedAt:     article.UpdatedAt,
+			}
+		} else {
+			responses[i] = resp
+		}
+	}
+	return responses, nil
+}
+
 // Article Handler
 type ArticleHandler struct {
 	repos *database.Repositories
@@ -64,6 +187,7 @@ func NewArticleHandler(repos *database.Repositories) *ArticleHandler {
 // @Param page query int false "Page number" default(1)
 // @Param page_size query int false "Page size" default(20)
 // @Param category_id query int false "Filter by category ID"
+// @Param category_slug query string false "Filter by category slug"
 // @Param author_id query int false "Filter by author ID"
 // @Param status query string false "Filter by status (draft, under_review, published, hidden, rejected)"
 // @Param tag query string false "Filter by tag"
@@ -81,6 +205,9 @@ func (h *ArticleHandler) List(c *gin.Context) {
 		id, _ := strconv.ParseInt(categoryID, 10, 64)
 		filter.CategoryID = &id
 	}
+	if categorySlug := c.Query("category_slug"); categorySlug != "" {
+		filter.CategorySlug = &categorySlug
+	}
 	if authorID := c.Query("author_id"); authorID != "" {
 		id, _ := strconv.ParseInt(authorID, 10, 64)
 		filter.AuthorID = &id
@@ -90,6 +217,10 @@ func (h *ArticleHandler) List(c *gin.Context) {
 	}
 	if tag := c.Query("tag"); tag != "" {
 		filter.Tag = &tag
+	}
+	// Support multiple tags: ?tag_slugs=tag1,tag2,tag3
+	if tagSlugs := c.Query("tag_slugs"); tagSlugs != "" {
+		filter.TagSlugs = strings.Split(tagSlugs, ",")
 	}
 	if query := c.Query("q"); query != "" {
 		filter.Query = &query
@@ -103,8 +234,15 @@ func (h *ArticleHandler) List(c *gin.Context) {
 		return
 	}
 
+	// Convert to responses with full category and tags
+	responses, err := h.toArticleResponses(c, articles)
+	if err != nil {
+		middleware.AbortWithError(c, http.StatusInternalServerError, "internal_error", "Failed to build responses")
+		return
+	}
+
 	c.JSON(http.StatusOK, dto.SuccessResponse{
-		Data:       articles,
+		Data:       responses,
 		Pagination: getPagination(page, pageSize, total),
 	})
 }
@@ -118,6 +256,7 @@ func (h *ArticleHandler) List(c *gin.Context) {
 // @Param page query int false "Page number" default(1)
 // @Param page_size query int false "Page size" default(20)
 // @Param category_id query int false "Filter by category ID"
+// @Param category_slug query string false "Filter by category slug"
 // @Param tag query string false "Filter by tag"
 // @Param q query string false "Search query"
 // @Param sort query string false "Sort by field" default(-published_at)
@@ -138,12 +277,22 @@ func (h *ArticleHandler) ListPublic(c *gin.Context) {
 		id, _ := strconv.ParseInt(categoryID, 10, 64)
 		filter.CategoryID = &id
 	}
+	if categorySlug := c.Query("category_slug"); categorySlug != "" {
+		filter.CategorySlug = &categorySlug
+	}
 	if tag := c.Query("tag"); tag != "" {
 		filter.Tag = &tag
+	}
+	// Support multiple tags: ?tag_slugs=tag1,tag2,tag3
+	if tagSlugs := c.Query("tag_slugs"); tagSlugs != "" {
+		filter.TagSlugs = strings.Split(tagSlugs, ",")
 	}
 	if featured := c.Query("is_featured"); featured == "true" {
 		f := true
 		filter.IsFeatured = &f
+	}
+	if query := c.Query("q"); query != "" {
+		filter.Query = &query
 	}
 
 	sortBy := c.DefaultQuery("sort", "-published_at")
@@ -154,8 +303,15 @@ func (h *ArticleHandler) ListPublic(c *gin.Context) {
 		return
 	}
 
+	// Convert to responses with full category and tags
+	responses, err := h.toArticleResponses(c, articles)
+	if err != nil {
+		middleware.AbortWithError(c, http.StatusInternalServerError, "internal_error", "Failed to build responses")
+		return
+	}
+
 	c.JSON(http.StatusOK, dto.SuccessResponse{
-		Data:       articles,
+		Data:       responses,
 		Pagination: getPagination(page, pageSize, total),
 	})
 }
@@ -212,30 +368,11 @@ func (h *ArticleHandler) GetBySlug(c *gin.Context) {
 		return
 	}
 
-	// Get tags
-	tags, _ := h.repos.Articles.GetTags(c.Request.Context(), article.ID)
-	tagNames := make([]string, len(tags))
-	for i, tag := range tags {
-		tagNames[i] = tag.Name
-	}
-
-	response := dto.ArticleResponse{
-		ID:            article.ID,
-		Title:         article.Title,
-		Slug:          article.Slug,
-		Summary:       article.Summary,
-		Content:       article.Content,
-		FeaturedImage: article.FeaturedImage,
-		AuthorID:      article.AuthorID,
-		CategoryID:    article.CategoryID,
-		Status:        string(article.Status),
-		ViewCount:     article.ViewCount,
-		IsFeatured:    article.IsFeatured,
-		Tags:          tagNames,
-		PublishedAt:   article.PublishedAt,
-		ScheduledAt:   article.ScheduledAt,
-		CreatedAt:     article.CreatedAt,
-		UpdatedAt:     article.UpdatedAt,
+	// Convert to response with full category and tags
+	response, err := h.toArticleResponse(c, article)
+	if err != nil {
+		middleware.AbortWithError(c, http.StatusInternalServerError, "internal_error", "Failed to build article response")
+		return
 	}
 
 	c.JSON(http.StatusOK, dto.SuccessResponse{Data: response})
@@ -253,7 +390,7 @@ func (h *ArticleHandler) GetBySlug(c *gin.Context) {
 // @Failure 400 {object} middleware.ErrorResponse "Invalid request body"
 // @Failure 401 {object} middleware.ErrorResponse "Unauthorized"
 // @Failure 500 {object} middleware.ErrorResponse "Internal server error"
-// @Router /admin/articles [post]
+// @Router /api/v1/admin/articles [post]
 func (h *ArticleHandler) Create(c *gin.Context) {
 	var req dto.CreateArticleRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -263,9 +400,21 @@ func (h *ArticleHandler) Create(c *gin.Context) {
 
 	userID := c.GetInt64("user_id")
 
+	// Auto-generate slug from title if not provided
+	slug := req.Slug
+	if slug == "" {
+		slug = generateSlug(req.Title)
+	}
+
+	// Convert FlexibleTime to *time.Time
+	var scheduledAt *time.Time
+	if req.ScheduledAt != nil {
+		scheduledAt = req.ScheduledAt.ToTimePtr()
+	}
+
 	article := &models.Article{
 		Title:         req.Title,
-		Slug:          req.Slug,
+		Slug:          slug,
 		Summary:       req.Summary,
 		Content:       req.Content,
 		FeaturedImage: req.FeaturedImage,
@@ -273,7 +422,7 @@ func (h *ArticleHandler) Create(c *gin.Context) {
 		CategoryID:    req.CategoryID,
 		Status:        models.StatusDraft,
 		IsFeatured:    req.IsFeatured,
-		ScheduledAt:   req.ScheduledAt,
+		ScheduledAt:   scheduledAt,
 	}
 
 	if err := h.repos.Articles.Create(c.Request.Context(), article); err != nil {
@@ -303,7 +452,7 @@ func (h *ArticleHandler) Create(c *gin.Context) {
 // @Failure 401 {object} middleware.ErrorResponse "Unauthorized"
 // @Failure 404 {object} middleware.ErrorResponse "Article not found"
 // @Failure 500 {object} middleware.ErrorResponse "Internal server error"
-// @Router /admin/articles/{id} [put]
+// @Router /api/v1/admin/articles/{id} [put]
 func (h *ArticleHandler) Update(c *gin.Context) {
 	id, _ := strconv.ParseInt(c.Param("id"), 10, 64)
 
@@ -319,14 +468,26 @@ func (h *ArticleHandler) Update(c *gin.Context) {
 		return
 	}
 
+	// Convert FlexibleTime to *time.Time
+	var scheduledAt *time.Time
+	if req.ScheduledAt != nil {
+		scheduledAt = req.ScheduledAt.ToTimePtr()
+	}
+
+	// Auto-generate slug from title if not provided
+	slug := req.Slug
+	if slug == "" {
+		slug = generateSlug(req.Title)
+	}
+
 	article.Title = req.Title
-	article.Slug = req.Slug
+	article.Slug = slug
 	article.Summary = req.Summary
 	article.Content = req.Content
 	article.FeaturedImage = req.FeaturedImage
 	article.CategoryID = req.CategoryID
 	article.IsFeatured = req.IsFeatured
-	article.ScheduledAt = req.ScheduledAt
+	article.ScheduledAt = scheduledAt
 
 	if err := h.repos.Articles.Update(c.Request.Context(), article); err != nil {
 		middleware.AbortWithError(c, http.StatusInternalServerError, "internal_error", "Failed to update article")
@@ -347,7 +508,7 @@ func (h *ArticleHandler) Update(c *gin.Context) {
 // @Failure 401 {object} middleware.ErrorResponse "Unauthorized"
 // @Failure 404 {object} middleware.ErrorResponse "Article not found"
 // @Failure 500 {object} middleware.ErrorResponse "Internal server error"
-// @Router /admin/articles/{id} [delete]
+// @Router /api/v1/admin/articles/{id} [delete]
 func (h *ArticleHandler) Delete(c *gin.Context) {
 	id, _ := strconv.ParseInt(c.Param("id"), 10, 64)
 
@@ -535,6 +696,121 @@ func (h *ArticleHandler) GetRevisions(c *gin.Context) {
 	c.JSON(http.StatusOK, dto.SuccessResponse{Data: revisions})
 }
 
+// Home Handler
+type HomeHandler struct {
+	repos *database.Repositories
+}
+
+func NewHomeHandler(repos *database.Repositories) *HomeHandler {
+	return &HomeHandler{repos: repos}
+}
+
+// CategorySection represents a category with its articles
+type CategorySection struct {
+	Category *models.Category  `json:"category"`
+	Articles []*models.Article `json:"articles"`
+}
+
+// HomeResponse represents the home page data
+type HomeResponse struct {
+	Hero       *models.Article   `json:"hero,omitempty"`
+	Breaking   []*models.Article `json:"breaking,omitempty"`
+	Featured   []*models.Article `json:"featured,omitempty"`
+	ByCategory []CategorySection `json:"by_category"`
+	MostRead   []*models.Article `json:"most_read,omitempty"`
+}
+
+// GetHomeData godoc
+// @Summary Get home page data
+// @Description Get aggregated data for home page sections by category slugs
+// @Tags Home
+// @Accept json
+// @Produce json
+// @Param sections query string false "Comma-separated category slugs" example("hoat-dong-cua-thu-truong,tin-quan-su")
+// @Success 200 {object} dto.SuccessResponse{data=HomeResponse}
+// @Failure 500 {object} middleware.ErrorResponse
+// @Router /api/v1/home [get]
+func (h *HomeHandler) GetHomeData(c *gin.Context) {
+	// Default category slugs for home page sections
+	defaultSlugs := []string{"tin-quoc-te", "tin-trong-nuoc", "tin-quan-su", "tin-don-vi"}
+
+	sectionsParam := c.Query("sections")
+	var slugs []string
+
+	if sectionsParam == "" {
+		slugs = defaultSlugs
+	} else {
+		slugs = strings.Split(sectionsParam, ",")
+	}
+
+	result := HomeResponse{
+		ByCategory: make([]CategorySection, 0, len(slugs)),
+	}
+
+	published := string(models.StatusPublished)
+
+	// Fetch hero article (latest with thumbnail)
+	heroFilter := &repositories.ArticleFilter{
+		Status: &published,
+	}
+	heroArticles, _, err := h.repos.Articles.List(c.Request.Context(), heroFilter, 1, 1, "-published_at")
+	if err == nil && len(heroArticles) > 0 {
+		result.Hero = heroArticles[0]
+	}
+
+	// Fetch breaking news (latest 10)
+	breakingArticles, _, err := h.repos.Articles.List(c.Request.Context(), heroFilter, 1, 10, "-published_at")
+	if err == nil {
+		result.Breaking = breakingArticles
+	}
+
+	// Fetch featured (latest 6)
+	featuredArticles, _, err := h.repos.Articles.List(c.Request.Context(), heroFilter, 1, 6, "-published_at")
+	if err == nil {
+		result.Featured = featuredArticles
+	}
+
+	// Fetch most read (top 10 by view_count)
+	mostReadArticles, _, err := h.repos.Articles.List(c.Request.Context(), heroFilter, 1, 10, "-view_count")
+	if err == nil {
+		result.MostRead = mostReadArticles
+	}
+
+	// For each slug, fetch category and its articles
+	for _, slug := range slugs {
+		slug = strings.TrimSpace(slug)
+		if slug == "" {
+			continue
+		}
+
+		// Get category by slug
+		category, err := h.repos.Categories.GetBySlug(c.Request.Context(), slug)
+		if err != nil {
+			// Skip if category not found
+			continue
+		}
+
+		// Get published articles for this category (max 6, sorted by -published_at)
+		filter := &repositories.ArticleFilter{
+			CategoryID: &category.ID,
+			Status:     &published,
+		}
+
+		articles, _, err := h.repos.Articles.List(c.Request.Context(), filter, 1, 6, "-published_at")
+		if err != nil {
+			// Return empty articles on error but include the category
+			articles = []*models.Article{}
+		}
+
+		result.ByCategory = append(result.ByCategory, CategorySection{
+			Category: category,
+			Articles: articles,
+		})
+	}
+
+	c.JSON(http.StatusOK, dto.SuccessResponse{Data: result})
+}
+
 // Category Handler
 type CategoryHandler struct {
 	repos *database.Repositories
@@ -560,6 +836,33 @@ func (h *CategoryHandler) List(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, dto.SuccessResponse{Data: categories})
+}
+
+// @Summary Get category tree for menu
+// @Description Returns hierarchical category tree for navigation menu
+// @Tags Categories
+// @Accept json
+// @Produce json
+// @Success 200 {object} dto.SuccessResponse
+// @Failure 500 {object} dto.ErrorResponse
+// @Router /api/v1/categories/menu [get]
+func (h *CategoryHandler) GetMenuTree(c *gin.Context) {
+	categories, err := h.repos.Categories.GetAll(c.Request.Context())
+	if err != nil {
+		middleware.AbortWithError(c, http.StatusInternalServerError, "internal_error", "Failed to fetch categories")
+		return
+	}
+
+	// Convert []*models.Category to []models.Category
+	catList := make([]models.Category, len(categories))
+	for i, cat := range categories {
+		catList[i] = *cat
+	}
+
+	// Build tree structure
+	tree := buildCategoryTreeHelper(catList, nil)
+
+	c.JSON(http.StatusOK, dto.SuccessResponse{Data: tree})
 }
 
 // @Summary Get category by slug
@@ -1111,7 +1414,7 @@ func (h *PageHandler) Create(c *gin.Context) {
 		Slug:           req.Slug,
 		Group:          req.Group,
 		Content:        req.Content,
-		Status:         req.Status,
+		Status:         models.PageStatus(req.Status),
 		Order:          req.Order,
 		HeroImageURL:   req.HeroImageURL,
 		SeoTitle:       req.SeoTitle,
@@ -1182,7 +1485,7 @@ func (h *PageHandler) Update(c *gin.Context) {
 	existing.Slug = req.Slug
 	existing.Group = req.Group
 	existing.Content = req.Content
-	existing.Status = req.Status
+	existing.Status = models.PageStatus(req.Status)
 	existing.Order = req.Order
 	existing.HeroImageURL = req.HeroImageURL
 	existing.SeoTitle = req.SeoTitle
@@ -1365,8 +1668,31 @@ type SearchHandler struct{ repos *database.Repositories }
 func NewSearchHandler(repos *database.Repositories) *SearchHandler {
 	return &SearchHandler{repos: repos}
 }
+
+// Search godoc
+// @Summary Search articles
+// @Description Search articles by keyword in title, content, and excerpt
+// @Tags Search
+// @Accept json
+// @Produce json
+// @Param q query string true "Search keyword"
+// @Param page query int false "Page number" default(1)
+// @Param page_size query int false "Page size" default(20)
+// @Success 200 {object} dto.SuccessResponse{data=[]models.Article,pagination=dto.PaginationResponse}
+// @Failure 400 {object} middleware.ErrorResponse
+// @Router /api/v1/search [get]
 func (h *SearchHandler) Search(c *gin.Context) {
 	query := c.Query("q")
+	if query == "" {
+		c.JSON(http.StatusBadRequest, middleware.ErrorResponse{
+			Error: middleware.ErrorDetail{
+				Code:    "INVALID_REQUEST",
+				Message: "Search query is required",
+			},
+		})
+		return
+	}
+
 	page := getPage(c)
 	pageSize := getPageSize(c)
 
@@ -1376,10 +1702,45 @@ func (h *SearchHandler) Search(c *gin.Context) {
 		Query:  &query,
 	}
 
-	articles, total, _ := h.repos.Articles.List(c.Request.Context(), filter, page, pageSize, "-published_at")
+	articles, total, err := h.repos.Articles.List(c.Request.Context(), filter, page, pageSize, "-published_at")
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, middleware.ErrorResponse{
+			Error: middleware.ErrorDetail{
+				Code:    "SEARCH_ERROR",
+				Message: "Failed to search articles",
+			},
+		})
+		return
+	}
 
 	c.JSON(http.StatusOK, dto.SuccessResponse{
 		Data:       articles,
 		Pagination: getPagination(page, pageSize, total),
 	})
+}
+
+// CategoryTreeNode represents a category with its children for menu tree
+type CategoryTreeNode struct {
+	models.Category
+	Children []CategoryTreeNode `json:"children,omitempty"`
+}
+
+// buildCategoryTreeHelper builds a hierarchical category tree
+func buildCategoryTreeHelper(categories []models.Category, parentID *int64) []CategoryTreeNode {
+	var result []CategoryTreeNode
+
+	for _, cat := range categories {
+		// Check if this category matches the parent
+		if (parentID == nil && cat.ParentID == nil) ||
+			(parentID != nil && cat.ParentID != nil && *cat.ParentID == *parentID) {
+
+			node := CategoryTreeNode{
+				Category: cat,
+				Children: buildCategoryTreeHelper(categories, &cat.ID),
+			}
+			result = append(result, node)
+		}
+	}
+
+	return result
 }

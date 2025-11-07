@@ -1,157 +1,193 @@
 package handlers
 
 import (
-	"net/http"
-	"strconv"
+"database/sql"
+"net/http"
 
-	"github.com/gin-gonic/gin"
-	"github.com/thieugt95/portal-365/backend/internal/database"
-	"github.com/thieugt95/portal-365/backend/internal/dto"
-	"github.com/thieugt95/portal-365/backend/internal/middleware"
-	"github.com/thieugt95/portal-365/backend/internal/models"
+"github.com/gin-gonic/gin"
+"github.com/thieugt95/portal-365/backend/internal/database"
+"github.com/thieugt95/portal-365/backend/internal/dto"
+"github.com/thieugt95/portal-365/backend/internal/models"
 )
 
 type IntroductionHandler struct {
-	repos *database.Repositories
+repos *database.Repositories
 }
 
 func NewIntroductionHandler(repos *database.Repositories) *IntroductionHandler {
-	return &IntroductionHandler{repos: repos}
+return &IntroductionHandler{repos: repos}
 }
 
-// ListIntroductions godoc
-// @Summary List all introduction pages
-// @Description Get list of all introduction pages (public access)
-// @Tags Introduction
-// @Produce json
-// @Success 200 {object} dto.SuccessResponse{data=[]models.Page}
-// @Router /introduction [get]
-func (h *IntroductionHandler) List(c *gin.Context) {
-	group := "introduction"
-	status := "published"
-	pages, err := h.repos.Pages.List(c.Request.Context(), &group, &status)
-	if err != nil {
-		middleware.AbortWithError(c, http.StatusInternalServerError, "internal_error", "Failed to fetch introduction pages")
-		return
-	}
+func (h *IntroductionHandler) ListIntroductionPages(c *gin.Context) {
+ctx := c.Request.Context()
+group := "introduction"
+status := string(models.PageStatusPublished)
 
-	c.JSON(http.StatusOK, dto.SuccessResponse{Data: pages})
+pages, err := h.repos.Pages.List(ctx, &group, &status)
+if err != nil {
+c.JSON(http.StatusInternalServerError, dto.ErrorResponse{
+Error: dto.ErrorDetail{
+Code:    "INTERNAL_ERROR",
+Message: "Failed to retrieve introduction pages",
+},
+})
+return
 }
 
-// GetIntroduction godoc
-// @Summary Get introduction page by slug
-// @Description Get a single introduction page by its slug
-// @Tags Introduction
-// @Produce json
-// @Param slug path string true "Page slug"
-// @Success 200 {object} dto.SuccessResponse{data=models.Page}
-// @Failure 404 {object} middleware.ErrorResponse
-// @Router /introduction/{slug} [get]
-func (h *IntroductionHandler) GetBySlug(c *gin.Context) {
-	slug := c.Param("slug")
-
-	page, err := h.repos.Pages.GetBySlug(c.Request.Context(), slug)
-	if err != nil {
-		middleware.AbortWithError(c, http.StatusNotFound, "not_found", "Introduction page not found")
-		return
-	}
-
-	c.JSON(http.StatusOK, dto.SuccessResponse{Data: page})
+type IntroMenuItem struct {
+Key   string `json:"key"`
+Title string `json:"title"`
+Slug  string `json:"slug"`
+Order int    `json:"order"`
 }
 
-// CreateIntroduction godoc
-// @Summary Create introduction page
-// @Description Create a new introduction page (Admin only)
-// @Tags Introduction (Admin)
-// @Accept json
-// @Produce json
-// @Security BearerAuth
-// @Param page body dto.CreatePageRequest true "Introduction page data"
-// @Success 201 {object} dto.SuccessResponse{data=models.Page}
-// @Failure 400 {object} middleware.ErrorResponse
-// @Failure 401 {object} middleware.ErrorResponse
-// @Router /admin/introduction [post]
-func (h *IntroductionHandler) Create(c *gin.Context) {
-	var req dto.CreatePageRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		middleware.AbortWithError(c, http.StatusBadRequest, "invalid_request", err.Error())
-		return
-	}
-
-	page := &models.Page{
-		Title:    req.Title,
-		Slug:     req.Slug,
-		Content:  req.Content,
-		IsActive: true, // Introduction pages are active by default
-	}
-
-	if err := h.repos.Pages.Create(c.Request.Context(), page); err != nil {
-		middleware.AbortWithError(c, http.StatusInternalServerError, "internal_error", "Failed to create introduction page")
-		return
-	}
-
-	c.JSON(http.StatusCreated, dto.SuccessResponse{Data: page})
+items := make([]IntroMenuItem, len(pages))
+for i, page := range pages {
+items[i] = IntroMenuItem{
+Key:   page.Key,
+Title: page.Title,
+Slug:  page.Slug,
+Order: page.Order,
+}
 }
 
-// UpdateIntroduction godoc
-// @Summary Update introduction page
-// @Description Update an existing introduction page (Admin only)
-// @Tags Introduction (Admin)
-// @Accept json
-// @Produce json
-// @Security BearerAuth
-// @Param id path int true "Page ID"
-// @Param page body dto.UpdatePageRequest true "Updated page data"
-// @Success 200 {object} dto.SuccessResponse{data=models.Page}
-// @Failure 400 {object} middleware.ErrorResponse
-// @Failure 401 {object} middleware.ErrorResponse
-// @Failure 404 {object} middleware.ErrorResponse
-// @Router /admin/introduction/{id} [put]
-func (h *IntroductionHandler) Update(c *gin.Context) {
-	id, _ := strconv.ParseInt(c.Param("id"), 10, 64)
-
-	var req dto.UpdatePageRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		middleware.AbortWithError(c, http.StatusBadRequest, "invalid_request", err.Error())
-		return
-	}
-
-	page, err := h.repos.Pages.GetByID(c.Request.Context(), id)
-	if err != nil {
-		middleware.AbortWithError(c, http.StatusNotFound, "not_found", "Introduction page not found")
-		return
-	}
-
-	page.Title = req.Title
-	page.Slug = req.Slug
-	page.Content = req.Content
-
-	if err := h.repos.Pages.Update(c.Request.Context(), page); err != nil {
-		middleware.AbortWithError(c, http.StatusInternalServerError, "internal_error", "Failed to update introduction page")
-		return
-	}
-
-	c.JSON(http.StatusOK, dto.SuccessResponse{Data: page})
+c.JSON(http.StatusOK, dto.SuccessResponse{Data: items})
 }
 
-// DeleteIntroduction godoc
-// @Summary Delete introduction page
-// @Description Delete an introduction page (Admin only)
-// @Tags Introduction (Admin)
-// @Produce json
-// @Security BearerAuth
-// @Param id path int true "Page ID"
-// @Success 200 {object} dto.SuccessResponse
-// @Failure 401 {object} middleware.ErrorResponse
-// @Failure 404 {object} middleware.ErrorResponse
-// @Router /admin/introduction/{id} [delete]
-func (h *IntroductionHandler) Delete(c *gin.Context) {
-	id, _ := strconv.ParseInt(c.Param("id"), 10, 64)
+func (h *IntroductionHandler) GetIntroductionPage(c *gin.Context) {
+ctx := c.Request.Context()
+key := c.Param("key")
 
-	if err := h.repos.Pages.Delete(c.Request.Context(), id); err != nil {
-		middleware.AbortWithError(c, http.StatusInternalServerError, "internal_error", "Failed to delete introduction page")
-		return
-	}
+page, err := h.repos.Pages.GetByGroupAndKey(ctx, "introduction", key)
+if err != nil {
+if err == sql.ErrNoRows {
+c.JSON(http.StatusNotFound, dto.ErrorResponse{
+Error: dto.ErrorDetail{
+Code:    "NOT_FOUND",
+Message: "Introduction page not found",
+},
+})
+return
+}
+c.JSON(http.StatusInternalServerError, dto.ErrorResponse{
+Error: dto.ErrorDetail{
+Code:    "INTERNAL_ERROR",
+Message: "Failed to retrieve introduction page",
+},
+})
+return
+}
 
-	c.JSON(http.StatusOK, dto.SuccessResponse{Data: gin.H{"message": "Introduction page deleted successfully"}})
+if page.Status != models.PageStatusPublished {
+c.JSON(http.StatusNotFound, dto.ErrorResponse{
+Error: dto.ErrorDetail{
+Code:    "NOT_FOUND",
+Message: "Introduction page not found or not published",
+},
+})
+return
+}
+
+go h.repos.Pages.IncrementViewCount(c.Request.Context(), page.ID)
+c.JSON(http.StatusOK, dto.SuccessResponse{Data: page})
+}
+
+func (h *IntroductionHandler) ListIntroductionPagesAdmin(c *gin.Context) {
+ctx := c.Request.Context()
+group := "introduction"
+pages, err := h.repos.Pages.List(ctx, &group, nil)
+if err != nil {
+c.JSON(http.StatusInternalServerError, dto.ErrorResponse{
+Error: dto.ErrorDetail{
+Code:    "INTERNAL_ERROR",
+Message: "Failed to retrieve introduction pages",
+},
+})
+return
+}
+c.JSON(http.StatusOK, dto.SuccessResponse{Data: pages})
+}
+
+func (h *IntroductionHandler) UpdateIntroductionPage(c *gin.Context) {
+ctx := c.Request.Context()
+key := c.Param("key")
+
+validKeys := map[string]bool{
+"history": true, "organization": true, "leadership": true, "achievements": true,
+}
+if !validKeys[key] {
+c.JSON(http.StatusBadRequest, dto.ErrorResponse{
+Error: dto.ErrorDetail{Code: "INVALID_KEY", Message: "Invalid introduction page key"},
+})
+return
+}
+
+var req dto.UpdateIntroPageRequest
+if err := c.ShouldBindJSON(&req); err != nil {
+c.JSON(http.StatusBadRequest, dto.ErrorResponse{
+Error: dto.ErrorDetail{Code: "INVALID_INPUT", Message: err.Error()},
+})
+return
+}
+
+if req.Status != nil {
+if *req.Status != string(models.PageStatusDraft) && *req.Status != string(models.PageStatusPublished) {
+c.JSON(http.StatusBadRequest, dto.ErrorResponse{
+Error: dto.ErrorDetail{Code: "INVALID_STATUS", Message: "Status must be draft or published"},
+})
+return
+}
+}
+
+if req.Title != nil && len(*req.Title) > 200 {
+c.JSON(http.StatusBadRequest, dto.ErrorResponse{
+Error: dto.ErrorDetail{Code: "INVALID_TITLE", Message: "Title must not exceed 200 characters"},
+})
+return
+}
+
+existingPage, err := h.repos.Pages.GetByGroupAndKey(ctx, "introduction", key)
+if err != nil {
+if err == sql.ErrNoRows {
+c.JSON(http.StatusNotFound, dto.ErrorResponse{
+Error: dto.ErrorDetail{Code: "NOT_FOUND", Message: "Introduction page not found"},
+})
+return
+}
+c.JSON(http.StatusInternalServerError, dto.ErrorResponse{
+Error: dto.ErrorDetail{Code: "INTERNAL_ERROR", Message: "Failed to retrieve introduction page"},
+})
+return
+}
+
+updatePage := &models.Page{
+Title: existingPage.Title, Content: existingPage.Content, Status: existingPage.Status,
+Order: existingPage.Order, HeroImageURL: existingPage.HeroImageURL,
+SeoTitle: existingPage.SeoTitle, SeoDescription: existingPage.SeoDescription,
+}
+
+if req.Title != nil { updatePage.Title = *req.Title }
+if req.Content != nil { updatePage.Content = *req.Content }
+if req.Status != nil { updatePage.Status = models.PageStatus(*req.Status) }
+if req.Order != nil { updatePage.Order = *req.Order }
+updatePage.HeroImageURL = req.HeroImageURL
+updatePage.SeoTitle = req.SeoTitle
+updatePage.SeoDescription = req.SeoDescription
+
+if err := h.repos.Pages.UpdateByKey(ctx, "introduction", key, updatePage); err != nil {
+c.JSON(http.StatusInternalServerError, dto.ErrorResponse{
+Error: dto.ErrorDetail{Code: "INTERNAL_ERROR", Message: "Failed to update introduction page"},
+})
+return
+}
+
+updatedPage, err := h.repos.Pages.GetByGroupAndKey(ctx, "introduction", key)
+if err != nil {
+c.JSON(http.StatusInternalServerError, dto.ErrorResponse{
+Error: dto.ErrorDetail{Code: "INTERNAL_ERROR", Message: "Failed to retrieve updated page"},
+})
+return
+}
+
+c.JSON(http.StatusOK, dto.SuccessResponse{Data: updatedPage})
 }

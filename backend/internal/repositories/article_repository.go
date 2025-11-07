@@ -11,14 +11,16 @@ import (
 )
 
 type ArticleFilter struct {
-	CategoryID *int64
-	AuthorID   *int64
-	Status     *string
-	Tag        *string
-	IsFeatured *bool
-	FromDate   *time.Time
-	ToDate     *time.Time
-	Query      *string
+	CategoryID   *int64
+	CategorySlug *string
+	AuthorID     *int64
+	Status       *string
+	Tag          *string
+	TagSlugs     []string // Support multiple tags
+	IsFeatured   *bool
+	FromDate     *time.Time
+	ToDate       *time.Time
+	Query        *string
 }
 
 type ArticleRepository interface {
@@ -122,6 +124,10 @@ func (r *articleRepository) List(ctx context.Context, filter *ArticleFilter, pag
 			whereClauses = append(whereClauses, "category_id = ?")
 			args = append(args, *filter.CategoryID)
 		}
+		if filter.CategorySlug != nil {
+			whereClauses = append(whereClauses, "category_id = (SELECT id FROM categories WHERE slug = ?)")
+			args = append(args, *filter.CategorySlug)
+		}
 		if filter.AuthorID != nil {
 			whereClauses = append(whereClauses, "author_id = ?")
 			args = append(args, *filter.AuthorID)
@@ -150,6 +156,15 @@ func (r *articleRepository) List(ctx context.Context, filter *ArticleFilter, pag
 		if filter.Tag != nil {
 			whereClauses = append(whereClauses, "id IN (SELECT article_id FROM article_tags at INNER JOIN tags t ON at.tag_id = t.id WHERE t.slug = ?)")
 			args = append(args, *filter.Tag)
+		}
+		if len(filter.TagSlugs) > 0 {
+			// Filter by multiple tags (articles must have at least one of the tags)
+			placeholders := make([]string, len(filter.TagSlugs))
+			for i := range filter.TagSlugs {
+				placeholders[i] = "?"
+				args = append(args, filter.TagSlugs[i])
+			}
+			whereClauses = append(whereClauses, fmt.Sprintf("id IN (SELECT article_id FROM article_tags at INNER JOIN tags t ON at.tag_id = t.id WHERE t.slug IN (%s))", strings.Join(placeholders, ",")))
 		}
 	}
 

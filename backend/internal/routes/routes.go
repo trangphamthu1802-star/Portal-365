@@ -10,6 +10,9 @@ import (
 )
 
 func Setup(r *gin.Engine, cfg *config.Config, repos *database.Repositories) {
+	// Static file serving for uploads
+	r.Static("/static", "./storage")
+
 	// Health check
 	r.GET("/api/v1/healthz", handlers.HealthCheck)
 
@@ -27,11 +30,17 @@ func Setup(r *gin.Engine, cfg *config.Config, repos *database.Repositories) {
 			}
 
 			// Public content
-			public.GET("/categories", handlers.NewCategoryHandler(repos).List)
-			public.GET("/categories/:slug", handlers.NewCategoryHandler(repos).GetBySlug)
+			categoryHandler := handlers.NewCategoryHandler(repos)
+			public.GET("/categories", categoryHandler.List)
+			public.GET("/categories/menu", categoryHandler.GetMenuTree)
+			public.GET("/categories/:slug", categoryHandler.GetBySlug)
 
 			public.GET("/tags", handlers.NewTagHandler(repos).List)
 			public.GET("/tags/:slug", handlers.NewTagHandler(repos).GetBySlug)
+
+			// Home data
+			homeHandler := handlers.NewHomeHandler(repos)
+			public.GET("/home", homeHandler.GetHomeData)
 
 			articlesHandler := handlers.NewArticleHandler(repos)
 			public.GET("/articles", articlesHandler.ListPublic)
@@ -43,25 +52,37 @@ func Setup(r *gin.Engine, cfg *config.Config, repos *database.Repositories) {
 			public.GET("/pages", pageHandler.List)
 			public.GET("/pages/:slug", pageHandler.GetBySlug)
 
-			public.GET("/banners", handlers.NewBannerHandler(repos).GetByPlacement)
-
 			public.GET("/settings", handlers.NewSettingHandler(repos).GetPublic)
 
 			public.GET("/search", handlers.NewSearchHandler(repos).Search)
 
-			// Introduction pages
+			// Introduction pages (public)
 			introHandler := handlers.NewIntroductionHandler(repos)
-			public.GET("/introduction", introHandler.List)
-			public.GET("/introduction/:slug", introHandler.GetBySlug)
+			public.GET("/introduction", introHandler.ListIntroductionPages)
+			public.GET("/introduction/:key", introHandler.GetIntroductionPage)
 
 			// Activities
 			activityHandler := handlers.NewActivityHandler(repos)
 			public.GET("/activities", activityHandler.List)
 			public.GET("/activities/:slug", activityHandler.GetBySlug)
 
+			// Documents (public)
+			documentHandler := handlers.NewDocumentsHandler(repos)
+			public.GET("/documents", documentHandler.ListPublic)
+			public.GET("/documents/:slug", documentHandler.GetBySlug)
+
+			// Media Items (public)
+			mediaItemHandler := handlers.NewMediaItemHandler(repos)
+			public.GET("/media-items", mediaItemHandler.ListPublic)
+			public.GET("/media-items/:slug", mediaItemHandler.GetBySlug)
+
 			commentsHandler := handlers.NewCommentHandler(repos)
 			public.GET("/comments/article/:article_id", commentsHandler.GetByArticle)
 			public.POST("/comments", commentsHandler.Create)
+
+			// Banners (public)
+			bannerHandler := handlers.NewBannerHandlerImpl(repos)
+			public.GET("/banners", bannerHandler.GetByPlacement)
 		}
 
 		// Protected routes
@@ -71,6 +92,9 @@ func Setup(r *gin.Engine, cfg *config.Config, repos *database.Repositories) {
 			// Auth
 			protected.POST("/auth/logout", handlers.NewAuthHandler(cfg, repos).Logout)
 			protected.GET("/auth/me", handlers.NewAuthHandler(cfg, repos).Me)
+
+			// Upload (for rich text editor images)
+			protected.POST("/admin/uploads", handlers.NewUploadHandler().UploadImage)
 
 			// Articles (Author, Editor, Admin)
 			articles := protected.Group("/admin/articles")
@@ -113,11 +137,33 @@ func Setup(r *gin.Engine, cfg *config.Config, repos *database.Repositories) {
 			media := protected.Group("/admin/media")
 			media.Use(middleware.RequireRoles("Admin", "Editor", "Author"))
 			{
-				handler := handlers.NewMediaHandler(repos)
+				handler := handlers.NewMediaItemHandler(repos)
 				media.GET("", handler.List)
 				media.POST("/upload", handler.Upload)
 				media.GET("/:id", handler.GetByID)
 				media.DELETE("/:id", handler.Delete)
+			}
+
+			// Documents (Admin, Editor)
+			documents := protected.Group("/admin/documents")
+			documents.Use(middleware.RequireRoles("Admin", "Editor"))
+			{
+				handler := handlers.NewDocumentsHandler(repos)
+				documents.GET("", handler.List)
+				documents.POST("", handler.Create)
+				documents.PUT("/:id", handler.Update)
+				documents.DELETE("/:id", handler.Delete)
+			}
+
+			// Media Items (Admin, Editor)
+			mediaItems := protected.Group("/admin/media-items")
+			mediaItems.Use(middleware.RequireRoles("Admin", "Editor"))
+			{
+				handler := handlers.NewMediaItemHandler(repos)
+				mediaItems.GET("", handler.List)
+				mediaItems.POST("", handler.Create)
+				mediaItems.PUT("/:id", handler.Update)
+				mediaItems.DELETE("/:id", handler.Delete)
 			}
 
 			// Comments (Admin, Moderator)
@@ -128,6 +174,18 @@ func Setup(r *gin.Engine, cfg *config.Config, repos *database.Repositories) {
 				comments.GET("", handler.List)
 				comments.POST("/:id/approve", handler.Approve)
 				comments.DELETE("/:id", handler.Delete)
+			}
+
+			// Banners (Admin, Editor)
+			banners := protected.Group("/admin/banners")
+			banners.Use(middleware.RequireRoles("Admin", "Editor"))
+			{
+				handler := handlers.NewBannerHandlerImpl(repos)
+				banners.GET("", handler.List)
+				banners.POST("", handler.Create)
+				banners.GET("/:id", handler.GetByID)
+				banners.PUT("/:id", handler.Update)
+				banners.DELETE("/:id", handler.Delete)
 			}
 
 			// Pages (Admin, Editor)
@@ -155,18 +213,6 @@ func Setup(r *gin.Engine, cfg *config.Config, repos *database.Repositories) {
 				menus.POST("/:id/items", handler.AddMenuItem)
 				menus.GET("/:id/items", handler.GetMenuItems)
 				menus.DELETE("/items/:item_id", handler.DeleteMenuItem)
-			}
-
-			// Banners (Admin, Editor)
-			banners := protected.Group("/admin/banners")
-			banners.Use(middleware.RequireRoles("Admin", "Editor"))
-			{
-				handler := handlers.NewBannerHandler(repos)
-				banners.GET("", handler.List)
-				banners.POST("", handler.Create)
-				banners.GET("/:id", handler.GetByID)
-				banners.PUT("/:id", handler.Update)
-				banners.DELETE("/:id", handler.Delete)
 			}
 
 			// Settings (Admin)
@@ -220,9 +266,8 @@ func Setup(r *gin.Engine, cfg *config.Config, repos *database.Repositories) {
 			introduction.Use(middleware.RequireRoles("Admin", "Editor"))
 			{
 				handler := handlers.NewIntroductionHandler(repos)
-				introduction.POST("", handler.Create)
-				introduction.PUT("/:id", handler.Update)
-				introduction.DELETE("/:id", handler.Delete)
+				introduction.GET("", handler.ListIntroductionPagesAdmin)
+				introduction.PUT("/:key", handler.UpdateIntroductionPage)
 			}
 
 			// Activities (Admin, Editor)

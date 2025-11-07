@@ -13,6 +13,8 @@ type Repositories struct {
 	Tags       repositories.TagRepository
 	Articles   repositories.ArticleRepository
 	Media      repositories.MediaRepository
+	Documents  repositories.DocumentRepository
+	MediaItems repositories.MediaItemRepository
 	Comments   repositories.CommentRepository
 	Menus      repositories.MenuRepository
 	Pages      repositories.PageRepository
@@ -29,6 +31,8 @@ func NewRepositories(db *sql.DB) *Repositories {
 		Tags:       repositories.NewTagRepository(db),
 		Articles:   repositories.NewArticleRepository(db),
 		Media:      repositories.NewMediaRepository(db),
+		Documents:  repositories.NewDocumentRepository(db),
+		MediaItems: repositories.NewMediaItemRepository(db),
 		Comments:   repositories.NewCommentRepository(db),
 		Menus:      repositories.NewMenuRepository(db),
 		Pages:      repositories.NewPageRepository(db),

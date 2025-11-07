@@ -46,6 +46,8 @@ func Migrate(db *sql.DB) error {
 		createAuditLogsTable,
 		createRefreshTokensTable,
 		createViewLogsTable,
+		createDocumentsTable,
+		createMediaItemsTable,
 	}
 
 	for _, migration := range migrations {
@@ -255,9 +257,11 @@ CREATE TABLE IF NOT EXISTS pages (
 	title TEXT NOT NULL,
 	slug TEXT NOT NULL UNIQUE,
 	group_name TEXT NOT NULL DEFAULT '',
+	key TEXT NOT NULL DEFAULT '',
 	content TEXT NOT NULL,
 	status TEXT NOT NULL DEFAULT 'draft',
 	sort_order INTEGER NOT NULL DEFAULT 0,
+	view_count INTEGER NOT NULL DEFAULT 0,
 	hero_image_url TEXT,
 	seo_title TEXT,
 	seo_description TEXT,
@@ -267,9 +271,11 @@ CREATE TABLE IF NOT EXISTS pages (
 	updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE INDEX IF NOT EXISTS idx_pages_slug ON pages(slug);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_pages_slug ON pages(slug);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_pages_group_key ON pages(group_name, key);
 CREATE INDEX IF NOT EXISTS idx_pages_group ON pages(group_name);
 CREATE INDEX IF NOT EXISTS idx_pages_status ON pages(status);
+CREATE INDEX IF NOT EXISTS idx_pages_order ON pages(group_name, sort_order);
 `
 
 const createBannersTable = `
@@ -347,4 +353,65 @@ CREATE TABLE IF NOT EXISTS view_logs (
 );
 
 CREATE INDEX IF NOT EXISTS idx_view_logs_viewed_at ON view_logs(viewed_at);
+`
+
+const createDocumentsTable = `
+CREATE TABLE IF NOT EXISTS documents (
+	id INTEGER PRIMARY KEY AUTOINCREMENT,
+	title TEXT NOT NULL,
+	slug TEXT NOT NULL UNIQUE,
+	description TEXT,
+	category_id INTEGER NOT NULL,
+	file_url TEXT NOT NULL,
+	file_name TEXT NOT NULL,
+	file_size INTEGER NOT NULL DEFAULT 0,
+	file_type TEXT NOT NULL,
+	document_no TEXT,
+	issued_date DATETIME,
+	uploaded_by INTEGER NOT NULL,
+	view_count INTEGER NOT NULL DEFAULT 0,
+	status TEXT NOT NULL DEFAULT 'draft',
+	published_at DATETIME,
+	created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+	updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+	FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE RESTRICT,
+	FOREIGN KEY (uploaded_by) REFERENCES users(id) ON DELETE RESTRICT
+);
+
+CREATE INDEX IF NOT EXISTS idx_documents_slug ON documents(slug);
+CREATE INDEX IF NOT EXISTS idx_documents_category_id ON documents(category_id);
+CREATE INDEX IF NOT EXISTS idx_documents_status ON documents(status);
+CREATE INDEX IF NOT EXISTS idx_documents_published_at ON documents(published_at);
+CREATE INDEX IF NOT EXISTS idx_documents_document_no ON documents(document_no);
+`
+
+const createMediaItemsTable = `
+CREATE TABLE IF NOT EXISTS media_items (
+	id INTEGER PRIMARY KEY AUTOINCREMENT,
+	title TEXT NOT NULL,
+	slug TEXT NOT NULL UNIQUE,
+	description TEXT,
+	category_id INTEGER NOT NULL,
+	media_type TEXT NOT NULL,
+	url TEXT NOT NULL,
+	thumbnail_url TEXT,
+	file_size INTEGER NOT NULL DEFAULT 0,
+	duration INTEGER NOT NULL DEFAULT 0,
+	width INTEGER NOT NULL DEFAULT 0,
+	height INTEGER NOT NULL DEFAULT 0,
+	uploaded_by INTEGER NOT NULL,
+	view_count INTEGER NOT NULL DEFAULT 0,
+	status TEXT NOT NULL DEFAULT 'draft',
+	published_at DATETIME,
+	created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+	updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+	FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE RESTRICT,
+	FOREIGN KEY (uploaded_by) REFERENCES users(id) ON DELETE RESTRICT
+);
+
+CREATE INDEX IF NOT EXISTS idx_media_items_slug ON media_items(slug);
+CREATE INDEX IF NOT EXISTS idx_media_items_category_id ON media_items(category_id);
+CREATE INDEX IF NOT EXISTS idx_media_items_media_type ON media_items(media_type);
+CREATE INDEX IF NOT EXISTS idx_media_items_status ON media_items(status);
+CREATE INDEX IF NOT EXISTS idx_media_items_published_at ON media_items(published_at);
 `

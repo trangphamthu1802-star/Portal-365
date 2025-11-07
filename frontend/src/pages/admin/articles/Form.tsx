@@ -1,21 +1,43 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { useArticle, useCategories, useTags, useArticleMutations } from '../../../hooks/useArticles';
-import { LoadingSpinner, Toast } from '../../../components/Common';
+import { 
+  useAdminArticleById, 
+  useCreateArticle, 
+  useUpdateArticle,
+  useDeleteArticle,
+  useSubmitArticleForReview
+} from '../../../hooks/useApi';
+import { useCategories, useTags } from '../../../hooks/useAdminArticles';
+import type { DtoCreateArticleRequest } from '../../../api/data-contracts';
+import Toast from '../../../components/common/Toast';
+import LoadingSpinner from '../../../components/common/LoadingSpinner';
 import ConfirmModal from '../../../components/Common';
-import type { CreateArticleRequest } from '../../../types/api';
+import RichTextEditor from '../../../components/editor/RichTextEditor';
+import ImageUpload from '../../../components/editor/ImageUpload';
 
 export default function ArticleForm() {
   const { id } = useParams();
   const navigate = useNavigate();
   const isEditMode = !!id;
 
-  const { data: article, isLoading: articleLoading } = useArticle(Number(id) || 0);
-  const { data: categories } = useCategories();
-  const { data: tags } = useTags();
-  const { createArticle, updateArticle, deleteArticle, submitForReview } = useArticleMutations();
+  const { data: article, isLoading: articleLoading } = useAdminArticleById(Number(id) || 0);
+  const { categories, isLoading: categoriesLoading } = useCategories();
+  const { tags, isLoading: tagsLoading } = useTags();
+  const createArticle = useCreateArticle();
+  const updateArticle = useUpdateArticle();
+  const deleteArticle = useDeleteArticle();
+  const submitForReview = useSubmitArticleForReview();
 
-  const [formData, setFormData] = useState<CreateArticleRequest>({
+  // Group categories by parent
+  const { parentCategories, subcategories } = useMemo(() => {
+    const parents = categories.filter((c) => !c.parent_id);
+    const subs = categories.filter((c) => c.parent_id);
+    return { parentCategories: parents, subcategories: subs };
+  }, [categories]);
+
+  const [selectedParent, setSelectedParent] = useState<number | null>(null);
+
+  const [formData, setFormData] = useState<DtoCreateArticleRequest>({
     title: '',
     summary: '',
     content: '',
@@ -37,10 +59,15 @@ export default function ArticleForm() {
         content: article.content,
         featured_image: article.featured_image,
         category_id: article.category_id,
-        tag_ids: [], // Backend sẽ cần endpoint để lấy tag_ids
+        tag_ids: article.tags?.map(t => t.id) || [],
         is_featured: article.is_featured,
         scheduled_at: article.scheduled_at || undefined,
       });
+
+      // Set parent category for UI
+      if (article.category?.parent_id) {
+        setSelectedParent(article.category.parent_id);
+      }
     }
   }, [article]);
 
@@ -50,7 +77,7 @@ export default function ArticleForm() {
     if (!formData.title.trim()) {
       newErrors.title = 'Tiêu đề không được để trống';
     }
-    if (!formData.summary.trim()) {
+    if (!formData.summary?.trim()) {
       newErrors.summary = 'Tóm tắt không được để trống';
     }
     if (!formData.content.trim()) {
@@ -201,84 +228,104 @@ export default function ArticleForm() {
           {errors.summary && <p className="mt-1 text-sm text-red-500">{errors.summary}</p>}
         </div>
 
-        {/* Content */}
+        {/* Content - Rich Text Editor */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
             Nội dung <span className="text-red-500">*</span>
           </label>
-          <textarea
-            value={formData.content}
-            onChange={(e) => {
-              setFormData({ ...formData, content: e.target.value });
+          <RichTextEditor
+            content={formData.content}
+            onChange={(html) => {
+              setFormData({ ...formData, content: html });
               setErrors({ ...errors, content: '' });
             }}
-            rows={12}
-            className={`w-full px-4 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-              errors.content ? 'border-red-500' : ''
-            }`}
-            placeholder="Nhập nội dung bài viết"
-          />
-          {errors.content && <p className="mt-1 text-sm text-red-500">{errors.content}</p>}
-          <p className="mt-1 text-sm text-gray-500">
-            Note: Hiện tại dùng textarea đơn giản. Sẽ thêm rich text editor sau.
-          </p>
-        </div>
-
-        {/* Featured Image URL */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            URL ảnh đại diện
-          </label>
-          <input
-            type="text"
-            value={formData.featured_image || ''}
-            onChange={(e) => setFormData({ ...formData, featured_image: e.target.value })}
-            className="w-full px-4 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-            placeholder="https://example.com/image.jpg"
+            placeholder="Nhập nội dung bài viết..."
+            error={errors.content}
           />
         </div>
 
-        {/* Category */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Chuyên mục <span className="text-red-500">*</span>
-          </label>
-          <select
-            value={formData.category_id}
-            onChange={(e) => {
-              setFormData({ ...formData, category_id: Number(e.target.value) });
-              setErrors({ ...errors, category_id: '' });
-            }}
-            className={`w-full px-4 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-              errors.category_id ? 'border-red-500' : ''
-            }`}
-          >
-            <option value={0}>Chọn chuyên mục</option>
-            {categories?.map((cat) => (
-              <option key={cat.id} value={cat.id}>
-                {cat.name}
-              </option>
-            ))}
-          </select>
-          {errors.category_id && <p className="mt-1 text-sm text-red-500">{errors.category_id}</p>}
+        {/* Featured Image Upload */}
+        <ImageUpload
+          value={formData.featured_image}
+          onChange={(url) => setFormData({ ...formData, featured_image: url })}
+          label="Ảnh đại diện"
+          error={errors.featured_image}
+        />
+
+        {/* Category - Hierarchical Selection */}
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Nhóm chuyên mục <span className="text-red-500">*</span>
+            </label>
+            <div className="grid grid-cols-2 gap-2">
+              {parentCategories.map((parent) => (
+                <button
+                  key={parent.id}
+                  type="button"
+                  onClick={() => {
+                    setSelectedParent(parent.id);
+                    setFormData({ ...formData, category_id: 0 }); // Reset subcategory
+                  }}
+                  className={`px-4 py-2 rounded text-sm ${
+                    selectedParent === parent.id
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
+                  {parent.name}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Chuyên mục con <span className="text-red-500">*</span>
+            </label>
+            <select
+              value={formData.category_id}
+              onChange={(e) => {
+                setFormData({ ...formData, category_id: Number(e.target.value) });
+                setErrors({ ...errors, category_id: '' });
+              }}
+              disabled={!selectedParent}
+              className={`w-full px-4 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                errors.category_id ? 'border-red-500' : ''
+              } ${!selectedParent ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+            >
+              <option value={0}>Chọn chuyên mục con</option>
+              {subcategories
+                .filter((sub) => sub.parent_id === selectedParent)
+                .map((sub) => (
+                  <option key={sub.id} value={sub.id}>
+                    {sub.name}
+                  </option>
+                ))}
+            </select>
+            {errors.category_id && <p className="mt-1 text-sm text-red-500">{errors.category_id}</p>}
+          </div>
         </div>
 
-        {/* Tags */}
+        {/* Tags - Chuyên đề */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
-            Nhãn
+            Chuyên đề
           </label>
           <div className="flex flex-wrap gap-2">
-            {tags?.map((tag) => (
-              <label key={tag.id} className="flex items-center">
-                <input
-                  type="checkbox"
-                  checked={formData.tag_ids?.includes(tag.id) || false}
-                  onChange={() => handleToggleTag(tag.id)}
-                  className="mr-2"
-                />
-                <span className="text-sm">{tag.name}</span>
-              </label>
+            {tags.map((tag) => (
+              <button
+                key={tag.id}
+                type="button"
+                onClick={() => handleToggleTag(tag.id)}
+                className={`px-3 py-1 rounded-full text-sm ${
+                  formData.tag_ids?.includes(tag.id)
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                {tag.name}
+              </button>
             ))}
           </div>
         </div>
@@ -304,8 +351,8 @@ export default function ArticleForm() {
           </label>
           <input
             type="datetime-local"
-            value={formData.scheduled_at || ''}
-            onChange={(e) => setFormData({ ...formData, scheduled_at: e.target.value })}
+            value={(formData.scheduled_at as string) || ''}
+            onChange={(e) => setFormData({ ...formData, scheduled_at: e.target.value as any })}
             className="w-full px-4 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>

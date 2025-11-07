@@ -33,7 +33,7 @@ func NewAuthHandler(cfg *config.Config, repos *database.Repositories) *AuthHandl
 // @Success 200 {object} dto.SuccessResponse{data=dto.LoginResponse}
 // @Failure 400 {object} middleware.ErrorResponse
 // @Failure 401 {object} middleware.ErrorResponse
-// @Router /auth/login [post]
+// @Router /api/v1/auth/login [post]
 func (h *AuthHandler) Login(c *gin.Context) {
 	var req dto.LoginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -128,7 +128,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 // @Success 200 {object} dto.SuccessResponse{data=dto.LoginResponse}
 // @Failure 400 {object} middleware.ErrorResponse
 // @Failure 401 {object} middleware.ErrorResponse
-// @Router /auth/refresh [post]
+// @Router /api/v1/auth/refresh [post]
 func (h *AuthHandler) Refresh(c *gin.Context) {
 	var req dto.RefreshTokenRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -197,7 +197,7 @@ func (h *AuthHandler) Refresh(c *gin.Context) {
 // @Success 200 {object} dto.SuccessResponse
 // @Failure 400 {object} middleware.ErrorResponse
 // @Security BearerAuth
-// @Router /auth/logout [post]
+// @Router /api/v1/auth/logout [post]
 func (h *AuthHandler) Logout(c *gin.Context) {
 	var req dto.RefreshTokenRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -224,7 +224,7 @@ func (h *AuthHandler) Logout(c *gin.Context) {
 // @Success 200 {object} dto.SuccessResponse{data=dto.UserResponse}
 // @Failure 401 {object} middleware.ErrorResponse
 // @Security BearerAuth
-// @Router /auth/me [get]
+// @Router /api/v1/auth/me [get]
 func (h *AuthHandler) Me(c *gin.Context) {
 	userID := c.GetInt64("user_id")
 

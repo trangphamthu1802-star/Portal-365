@@ -1,5 +1,6 @@
 import axios from 'axios';
 import type { AxiosError, InternalAxiosRequestConfig } from 'axios';
+import type { LoginResponse, SuccessResponse } from '../types/models';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE || 'http://localhost:8080/api/v1';
 
@@ -37,12 +38,14 @@ apiClient.interceptors.response.use(
           throw new Error('No refresh token');
         }
 
-        const response = await axios.post(`${API_BASE_URL}/auth/refresh`, {
-          refresh_token: refreshToken,
-        });
+        const response = await axios.post<SuccessResponse<LoginResponse>>(
+          `${API_BASE_URL}/auth/refresh`,
+          { refresh_token: refreshToken }
+        );
 
-        const { access_token } = response.data.data;
+        const { access_token, refresh_token: newRefreshToken } = response.data.data;
         localStorage.setItem('access_token', access_token);
+        localStorage.setItem('refresh_token', newRefreshToken);
 
         if (originalRequest.headers) {
           originalRequest.headers.Authorization = `Bearer ${access_token}`;

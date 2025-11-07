@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { getArticleImage } from '../lib/images';
 
 interface Article {
   id: number;
@@ -6,6 +7,8 @@ interface Article {
   slug: string;
   summary: string;
   thumbnail_url?: string;
+  featured_image?: string;
+  content?: string;
   view_count: number;
   published_at: string;
   category?: { name: string };
@@ -28,8 +31,9 @@ export default function NewsGrid({ articles, columns = 4 }: NewsGridProps) {
           {/* Thumbnail */}
           <div className="relative h-48 overflow-hidden bg-gray-200">
             <img
-              src={article.thumbnail_url || `https://picsum.photos/seed/${article.id}/400/300`}
+              src={getArticleImage(article)}
               alt={article.title}
+              loading="lazy"
               className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
             />
             {article.category && (

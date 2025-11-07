@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { Info, Activity, Newspaper, BookOpen, FileText, Camera, Menu, X, ChevronDown, Search, LogIn } from 'lucide-react';
-import { apiClient } from '../lib/api';
+import { apiClient } from '../lib/apiClient';
 import { Page, SuccessResponse } from '../types/api';
 
 const Navbar = () => {
@@ -14,13 +14,14 @@ const Navbar = () => {
   useEffect(() => {
     const fetchIntroPages = async () => {
       try {
-        const response = await apiClient.get<SuccessResponse<Page[]>>('/pages', {
-          params: { group: 'introduction', status: 'published' }
-        });
-        const sortedPages = response.data.data.sort((a, b) => a.order - b.order);
-        setIntroPages(sortedPages);
+        // Use new introduction API endpoint
+        const response = await apiClient.get<SuccessResponse<any[]>>('/introduction');
+        const pages = response.data.data;
+        setIntroPages(pages);
       } catch (error) {
         console.error('Error fetching intro pages:', error);
+        // Fallback to empty array if API fails
+        setIntroPages([]);
       }
     };
     fetchIntroPages();
@@ -46,7 +47,7 @@ const Navbar = () => {
   const dropdownMenus = {
     gioithieu: introPages.map(page => ({
       name: page.title,
-      path: `/${page.slug}`
+      path: `/intro/${page.slug}`
     })),
     hoatdong: [
       { name: 'Hoạt động của thủ trưởng sư đoàn', path: '/hoat-dong/thu-truong' },

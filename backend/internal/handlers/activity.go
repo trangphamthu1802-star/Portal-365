@@ -3,6 +3,7 @@ package handlers
 import (
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/thieugt95/portal-365/backend/internal/database"
@@ -28,7 +29,7 @@ func NewActivityHandler(repos *database.Repositories) *ActivityHandler {
 // @Param page query int false "Page number" default(1)
 // @Param page_size query int false "Items per page" default(20)
 // @Success 200 {object} dto.SuccessResponse{data=[]models.Article,pagination=dto.PaginationResponse}
-// @Router /activities [get]
+// @Router /api/v1/activities [get]
 func (h *ActivityHandler) List(c *gin.Context) {
 	page := getPage(c)
 	pageSize := getPageSize(c)
@@ -59,7 +60,7 @@ func (h *ActivityHandler) List(c *gin.Context) {
 // @Param slug path string true "Activity slug"
 // @Success 200 {object} dto.SuccessResponse{data=dto.ArticleResponse}
 // @Failure 404 {object} middleware.ErrorResponse
-// @Router /activities/{slug} [get]
+// @Router /api/v1/activities/{slug} [get]
 func (h *ActivityHandler) GetBySlug(c *gin.Context) {
 	slug := c.Param("slug")
 
@@ -71,9 +72,13 @@ func (h *ActivityHandler) GetBySlug(c *gin.Context) {
 
 	// Get tags
 	tags, _ := h.repos.Articles.GetTags(c.Request.Context(), article.ID)
-	tagNames := make([]string, len(tags))
+	tagResponses := make([]dto.TagResponse, len(tags))
 	for i, tag := range tags {
-		tagNames[i] = tag.Name
+		tagResponses[i] = dto.TagResponse{
+			ID:   tag.ID,
+			Name: tag.Name,
+			Slug: tag.Slug,
+		}
 	}
 
 	response := dto.ArticleResponse{
@@ -88,7 +93,7 @@ func (h *ActivityHandler) GetBySlug(c *gin.Context) {
 		Status:        string(article.Status),
 		ViewCount:     article.ViewCount,
 		IsFeatured:    article.IsFeatured,
-		Tags:          tagNames,
+		Tags:          tagResponses,
 		PublishedAt:   article.PublishedAt,
 		ScheduledAt:   article.ScheduledAt,
 		CreatedAt:     article.CreatedAt,
@@ -109,7 +114,7 @@ func (h *ActivityHandler) GetBySlug(c *gin.Context) {
 // @Success 201 {object} dto.SuccessResponse{data=models.Article}
 // @Failure 400 {object} middleware.ErrorResponse
 // @Failure 401 {object} middleware.ErrorResponse
-// @Router /admin/activities [post]
+// @Router /api/v1/admin/activities [post]
 func (h *ActivityHandler) Create(c *gin.Context) {
 	var req dto.CreateArticleRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -118,6 +123,12 @@ func (h *ActivityHandler) Create(c *gin.Context) {
 	}
 
 	userID := c.GetInt64("user_id")
+
+	// Convert FlexibleTime to *time.Time
+	var scheduledAt *time.Time
+	if req.ScheduledAt != nil {
+		scheduledAt = req.ScheduledAt.ToTimePtr()
+	}
 
 	article := &models.Article{
 		Title:         req.Title,
@@ -129,7 +140,7 @@ func (h *ActivityHandler) Create(c *gin.Context) {
 		CategoryID:    req.CategoryID,
 		Status:        models.StatusDraft,
 		IsFeatured:    req.IsFeatured,
-		ScheduledAt:   req.ScheduledAt,
+		ScheduledAt:   scheduledAt,
 	}
 
 	if err := h.repos.Articles.Create(c.Request.Context(), article); err != nil {
@@ -158,7 +169,7 @@ func (h *ActivityHandler) Create(c *gin.Context) {
 // @Failure 400 {object} middleware.ErrorResponse
 // @Failure 401 {object} middleware.ErrorResponse
 // @Failure 404 {object} middleware.ErrorResponse
-// @Router /admin/activities/{id} [put]
+// @Router /api/v1/admin/activities/{id} [put]
 func (h *ActivityHandler) Update(c *gin.Context) {
 	id, _ := strconv.ParseInt(c.Param("id"), 10, 64)
 
@@ -174,6 +185,12 @@ func (h *ActivityHandler) Update(c *gin.Context) {
 		return
 	}
 
+	// Convert FlexibleTime to *time.Time
+	var scheduledAt *time.Time
+	if req.ScheduledAt != nil {
+		scheduledAt = req.ScheduledAt.ToTimePtr()
+	}
+
 	article.Title = req.Title
 	article.Slug = req.Slug
 	article.Summary = req.Summary
@@ -181,7 +198,7 @@ func (h *ActivityHandler) Update(c *gin.Context) {
 	article.FeaturedImage = req.FeaturedImage
 	article.CategoryID = req.CategoryID
 	article.IsFeatured = req.IsFeatured
-	article.ScheduledAt = req.ScheduledAt
+	article.ScheduledAt = scheduledAt
 
 	if err := h.repos.Articles.Update(c.Request.Context(), article); err != nil {
 		middleware.AbortWithError(c, http.StatusInternalServerError, "internal_error", "Failed to update activity")
@@ -201,7 +218,7 @@ func (h *ActivityHandler) Update(c *gin.Context) {
 // @Success 200 {object} dto.SuccessResponse
 // @Failure 401 {object} middleware.ErrorResponse
 // @Failure 404 {object} middleware.ErrorResponse
-// @Router /admin/activities/{id} [delete]
+// @Router /api/v1/admin/activities/{id} [delete]
 func (h *ActivityHandler) Delete(c *gin.Context) {
 	id, _ := strconv.ParseInt(c.Param("id"), 10, 64)
 
@@ -223,7 +240,7 @@ func (h *ActivityHandler) Delete(c *gin.Context) {
 // @Success 200 {object} dto.SuccessResponse
 // @Failure 401 {object} middleware.ErrorResponse
 // @Failure 404 {object} middleware.ErrorResponse
-// @Router /admin/activities/{id}/publish [post]
+// @Router /api/v1/admin/activities/{id}/publish [post]
 func (h *ActivityHandler) Publish(c *gin.Context) {
 	id, _ := strconv.ParseInt(c.Param("id"), 10, 64)
 
