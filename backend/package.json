@@ -1,5 +1,8 @@
 {
   "devDependencies": {
     "swagger-typescript-api": "^13.2.16"
+  },
+  "dependencies": {
+    "sqlite3": "^5.1.7"
   }
 }

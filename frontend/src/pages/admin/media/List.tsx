@@ -11,7 +11,7 @@ interface MediaItem {
   id: number;
   media_type: 'image' | 'video';
   title: string;
-  url: string;
+  file_path: string;
   thumbnail_url?: string;
   description?: string;
   width?: number;
@@ -189,14 +189,7 @@ export default function MediaList() {
                   >
                     Thử lại
                   </button>
-                  {((error as AxiosError)?.response?.status === 401 || (error as AxiosError)?.response?.status === 403) && (
-                    <button
-                      onClick={() => window.location.href = '/login'}
-                      className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700"
-                    >
-                      Đăng nhập lại
-                    </button>
-                  )}
+                  {/* Do not manually redirect to /login. Let axios handle token refresh and redirect. */}
                 </div>
               </div>
             </div>
@@ -226,7 +219,7 @@ export default function MediaList() {
                       )}
                       <div className="absolute inset-0 bg-black bg-opacity-0 hover:bg-opacity-30 transition-all flex items-center justify-center">
                         <a
-                          href={`http://localhost:8080${video.url}`}
+                          href={`http://localhost:8080${video.file_path}`}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="opacity-0 hover:opacity-100 transition-opacity"
@@ -246,7 +239,7 @@ export default function MediaList() {
                       </div>
                       <div className="flex items-center gap-2 mt-3 pt-3 border-t">
                         <a
-                          href={`http://localhost:8080${video.url}`}
+                          href={`http://localhost:8080${video.file_path}`}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="flex-1 text-center px-3 py-1 text-sm text-blue-600 hover:bg-blue-50 rounded transition-colors"
@@ -281,14 +274,14 @@ export default function MediaList() {
                 {mediaItems.map((image) => (
                   <div key={image.id} className="group relative aspect-square bg-gray-100 rounded-lg overflow-hidden hover:shadow-lg transition-shadow">
                     <img
-                      src={`http://localhost:8080${image.url}`}
+                      src={image.file_path ? `http://localhost:8080${image.file_path}` : 'https://via.placeholder.com/400'}
                       alt={image.title}
                       className="w-full h-full object-cover"
                     />
                     <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-50 transition-all flex items-center justify-center">
                       <div className="opacity-0 group-hover:opacity-100 transition-opacity flex gap-2">
                         <a
-                          href={`http://localhost:8080${image.url}`}
+                          href={image.file_path ? `http://localhost:8080${image.file_path}` : '#'}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="p-2 bg-white rounded-full hover:bg-gray-100"

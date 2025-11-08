@@ -1,6 +1,6 @@
-﻿import { BrowserRouter, Routes, Route, Navigate, useLocation, useParams } from 'react-router-dom';
+﻿import { BrowserRouter, Routes, Route, Navigate, useParams } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { useAuth } from './context/AuthProvider';
+import { RequireAuth } from './components/auth/RequireAuth';
 
 // Pages
 import HomePage from './pages/Home';
@@ -32,7 +32,6 @@ import NewsIndex from './pages/news/Index';
 import DocsIndex from './pages/docs/Index';
 import MediaVideos from './pages/media/Videos';
 import MediaPhotos from './pages/media/Photos';
-import { CategoryListPage } from './pages/CategoryListPage';
 
 // Create a client
 const queryClient = new QueryClient({
@@ -44,19 +43,7 @@ const queryClient = new QueryClient({
   },
 });
 
-// Protected Route Component
-function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated } = useAuth();
-  const location = useLocation();
-  
-  if (!isAuthenticated) {
-    // Lưu đường dẫn hiện tại để redirect sau khi login
-    const redirectPath = location.pathname + location.search;
-    return <Navigate to={`/login?redirect=${encodeURIComponent(redirectPath)}`} replace />;
-  }
-  
-  return <>{children}</>;
-}
+// Remove legacy ProtectedRoute, use RequireAuth for admin routes
 
 // Redirect old article URLs to new format
 function RedirectToArticle() {
@@ -96,106 +83,106 @@ function App() {
             <Route
               path="/admin"
               element={
-                <ProtectedRoute>
+                <RequireAuth requiredRoles={["Admin","Editor"]}>
                   <AdminDashboard />
-                </ProtectedRoute>
+                </RequireAuth>
               }
             />
             {/* Redirect old /admin/activities to /admin */}
             <Route
               path="/admin/activities"
               element={
-                <ProtectedRoute>
+                <RequireAuth requiredRoles={["Admin","Editor"]}>
                   <Navigate to="/admin" replace />
-                </ProtectedRoute>
+                </RequireAuth>
               }
             />
             <Route
               path="/admin/articles"
               element={
-                <ProtectedRoute>
+                <RequireAuth requiredRoles={["Admin","Editor"]}>
                   <ArticlesList />
-                </ProtectedRoute>
+                </RequireAuth>
               }
             />
             <Route
               path="/admin/articles/create"
               element={
-                <ProtectedRoute>
+                <RequireAuth requiredRoles={["Admin","Editor"]}>
                   <ArticleForm />
-                </ProtectedRoute>
+                </RequireAuth>
               }
             />
             <Route
               path="/admin/articles/:id/edit"
               element={
-                <ProtectedRoute>
+                <RequireAuth requiredRoles={["Admin","Editor"]}>
                   <ArticleForm />
-                </ProtectedRoute>
+                </RequireAuth>
               }
             />
             <Route
               path="/admin/users"
               element={
-                <ProtectedRoute>
+                <RequireAuth requiredRoles={["Admin","Editor"]}>
                   <UsersList />
-                </ProtectedRoute>
+                </RequireAuth>
               }
             />
             <Route
               path="/admin/users/create"
               element={
-                <ProtectedRoute>
+                <RequireAuth requiredRoles={["Admin","Editor"]}>
                   <UserForm />
-                </ProtectedRoute>
+                </RequireAuth>
               }
             />
             <Route
               path="/admin/users/:id/edit"
               element={
-                <ProtectedRoute>
+                <RequireAuth requiredRoles={["Admin","Editor"]}>
                   <UserForm />
-                </ProtectedRoute>
+                </RequireAuth>
               }
             />
             <Route
               path="/admin/pages"
               element={
-                <ProtectedRoute>
+                <RequireAuth requiredRoles={["Admin","Editor"]}>
                   <PagesList />
-                </ProtectedRoute>
+                </RequireAuth>
               }
             />
             <Route
               path="/admin/pages/new"
               element={
-                <ProtectedRoute>
+                <RequireAuth requiredRoles={["Admin","Editor"]}>
                   <PageForm />
-                </ProtectedRoute>
+                </RequireAuth>
               }
             />
             <Route
               path="/admin/pages/:id/edit"
               element={
-                <ProtectedRoute>
+                <RequireAuth requiredRoles={["Admin","Editor"]}>
                   <PageForm />
-                </ProtectedRoute>
+                </RequireAuth>
               }
             />
             <Route
               path="/admin/introduction"
               element={
-                <ProtectedRoute>
+                <RequireAuth requiredRoles={["Admin","Editor"]}>
                   <IntroductionList />
-                </ProtectedRoute>
+                </RequireAuth>
               }
             />
             <Route
               path="/admin/introduction/:key"
               element={
-                <ProtectedRoute>
+                <RequireAuth requiredRoles={["Admin","Editor"]}>
                   <IntroductionEdit />
-                </ProtectedRoute>
+                </RequireAuth>
               }
             />
 
@@ -203,9 +190,9 @@ function App() {
             <Route
               path="/admin/news"
               element={
-                <ProtectedRoute>
+                <RequireAuth requiredRoles={["Admin","Editor"]}>
                   <NewsAdminList />
-                </ProtectedRoute>
+                </RequireAuth>
               }
             />
 
@@ -213,9 +200,9 @@ function App() {
             <Route
               path="/admin/docs"
               element={
-                <ProtectedRoute>
+                <RequireAuth requiredRoles={["Admin","Editor"]}>
                   <DocsAdminList />
-                </ProtectedRoute>
+                </RequireAuth>
               }
             />
 
@@ -223,9 +210,9 @@ function App() {
             <Route
               path="/admin/media"
               element={
-                <ProtectedRoute>
+                <RequireAuth requiredRoles={["Admin","Editor"]}>
                   <MediaAdminList />
-                </ProtectedRoute>
+                </RequireAuth>
               }
             />
 
@@ -233,25 +220,25 @@ function App() {
             <Route
               path="/admin/banners"
               element={
-                <ProtectedRoute>
+                <RequireAuth requiredRoles={["Admin","Editor"]}>
                   <BannersAdminList />
-                </ProtectedRoute>
+                </RequireAuth>
               }
             />
             <Route
               path="/admin/banners/new"
               element={
-                <ProtectedRoute>
+                <RequireAuth requiredRoles={["Admin","Editor"]}>
                   <BannerForm />
-                </ProtectedRoute>
+                </RequireAuth>
               }
             />
             <Route
               path="/admin/banners/:id/edit"
               element={
-                <ProtectedRoute>
+                <RequireAuth requiredRoles={["Admin","Editor"]}>
                   <BannerForm />
-                </ProtectedRoute>
+                </RequireAuth>
               }
             />
 

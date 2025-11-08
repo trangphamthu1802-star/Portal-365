@@ -5,9 +5,9 @@ import { useCategories, useTags } from '../../../hooks/useAdminArticles';
 import { EmptyState } from '../../../components/EmptyState';
 import LoadingSpinner from '../../../components/common/LoadingSpinner';
 import Toast from '../../../components/common/Toast';
-import { normalizeError } from '../../../lib/apiClient';
 import { useDeleteArticle, usePublishArticle, useUnpublishArticle } from '../../../hooks/useApi';
 import AdminTopBar from '../../../components/admin/AdminTopBar';
+import type { Article } from '../../../hooks/usePublicArticles';
 
 // Chuẩn hóa tên thành slug
 function toSlug(input?: string) {
@@ -33,8 +33,8 @@ export default function ArticlesList() {
   const [statusFilter, setStatusFilter] = useState<ArticleStatus | ''>('');
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
 
-  const { categories, isLoading: categoriesLoading } = useCategories();
-  const { tags, isLoading: tagsLoading } = useTags();
+  const { categories } = useCategories();
+  const { tags } = useTags();
   
   // Lọc chỉ 2 nhóm cha: Hoạt động và Tin tức
   const { parentBySlug, subcategoriesByParent, allSubcategories } = useMemo(() => {
@@ -373,7 +373,7 @@ export default function ArticlesList() {
                       )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <StatusBadge status={article.status} />
+                      <StatusBadge status={article.status as ArticleStatus} />
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
                       {article.view_count}

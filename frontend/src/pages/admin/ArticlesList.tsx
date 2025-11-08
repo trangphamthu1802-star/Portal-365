@@ -31,7 +31,7 @@ export const AdminArticlesList = () => {
     q,
   });
 
-  const { data: categoriesResponse } = useCategories({ page_size: 100 }, {});
+  const { data: categoriesResponse } = useCategories();
   const categories = (categoriesResponse as any)?.data || [];
 
   const articles = (articlesResponse as any)?.data || [];

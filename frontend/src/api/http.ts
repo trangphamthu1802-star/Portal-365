@@ -29,7 +29,7 @@ function onRefreshed(token: string) {
 // Request interceptor - attach token
 http.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
-    const token = localStorage.getItem('accessToken');
+  const token = localStorage.getItem('access_token');
     if (token && config.headers) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -64,7 +64,7 @@ http.interceptors.response.use(
       isRefreshing = true;
 
       try {
-        const refreshToken = localStorage.getItem('refreshToken');
+  const refreshToken = localStorage.getItem('refresh_token');
         
         if (!refreshToken) {
           throw new Error('No refresh token available');
@@ -78,9 +78,9 @@ http.interceptors.response.use(
         const { access_token, refresh_token: newRefreshToken } = response.data.data;
 
         // Save new tokens
-        localStorage.setItem('accessToken', access_token);
+        localStorage.setItem('access_token', access_token);
         if (newRefreshToken) {
-          localStorage.setItem('refreshToken', newRefreshToken);
+          localStorage.setItem('refresh_token', newRefreshToken);
         }
 
         // Notify all waiting requests
@@ -96,9 +96,9 @@ http.interceptors.response.use(
       } catch (refreshError) {
         // Refresh failed - logout user
         isRefreshing = false;
-        localStorage.removeItem('accessToken');
-        localStorage.removeItem('refreshToken');
-        localStorage.removeItem('user');
+  localStorage.removeItem('access_token');
+  localStorage.removeItem('refresh_token');
+  localStorage.removeItem('user');
         
         // Redirect to login
         window.location.href = '/login';

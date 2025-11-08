@@ -103,14 +103,14 @@ type RefreshTokenRequest struct {
 
 // User
 type CreateUserRequest struct {
-	Email    string `json:"email" binding:"required,email"`
+	Email    string `json:"email" binding:"required"`
 	Password string `json:"password" binding:"required,min=8"`
 	FullName string `json:"full_name" binding:"required"`
 	Avatar   string `json:"avatar"`
 }
 
 type UpdateUserRequest struct {
-	Email    string `json:"email" binding:"required,email"`
+	Email    string `json:"email" binding:"required"`
 	FullName string `json:"full_name" binding:"required"`
 	Avatar   string `json:"avatar"`
 	IsActive bool   `json:"is_active"`

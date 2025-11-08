@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { NavLink, useNavigate, useLocation } from 'react-router-dom';
-import { Search, LogIn, Menu, X, ChevronDown } from 'lucide-react';
+import { Search, Menu, X, ChevronDown } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '../lib/apiClient';
 import { NAVIGATION_MENU, isMenuItemActive, type MenuItem } from '../config/navigation';

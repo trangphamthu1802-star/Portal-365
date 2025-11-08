@@ -46,7 +46,7 @@ export default function ActivitiesList() {
     }
   };
 
-  const handleUnpublish = async (id: number) => {
+    const handleUnpublish = async () => {
     if (!confirm('Gỡ xuất bản bài viết này?')) return;
     try {
       // Note: No unpublish for activities, only delete
@@ -194,7 +194,7 @@ export default function ActivitiesList() {
                             </button>
                           ) : article.status === 'published' ? (
                             <button
-                              onClick={() => handleUnpublish(article.id)}
+                              onClick={() => handleUnpublish()}
                               className="text-orange-600 hover:text-orange-900"
                               title="Gỡ xuất bản"
                             >

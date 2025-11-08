@@ -19,7 +19,7 @@ export default function LoginPage() {
 
     try {
       // authService.login nhận 2 tham số riêng biệt (email, password)
-      const loginData = await authService.login(email, password);
+      await authService.login(email, password);
       
       // authService.login đã tự động lưu tokens và user vào localStorage
       // Chỉ cần revalidate auth context

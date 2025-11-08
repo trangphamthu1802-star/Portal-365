@@ -1,4 +1,4 @@
-import { useParams, Link, Navigate } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
 import { useEffect, useMemo } from 'react';
 import { useCategory } from '../../hooks/useCategory';
 import CategoryMainList from '../../components/category/CategoryMainList';
@@ -9,7 +9,7 @@ export default function CategoryPage() {
   const { slug } = useParams<{ slug: string }>();
   
   // Check if slug is valid
-  const isValidSlug = slug && ALL_CATEGORY_SLUGS.includes(slug);
+  const isValidSlug = slug && (ALL_CATEGORY_SLUGS as string[]).includes(slug);
 
   // Try to get category from API (optional - for dynamic data)
   const { data: category, isLoading: categoryLoading } = useCategory(slug || '', {

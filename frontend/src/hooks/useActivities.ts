@@ -40,7 +40,7 @@ export interface ActivitiesSection {
 
 // Dummy data fallback for each activities section
 const getDummyActivitiesData = (slug: string): Article[] => {
-  const categoryName = ACTIVITIES_NAMES[slug];
+  const categoryName = (ACTIVITIES_NAMES as Record<string, string>)[slug];
   
   // Import dummy articles if needed
   const baseArticles: Article[] = [

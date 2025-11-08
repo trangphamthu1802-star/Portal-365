@@ -1,4 +1,5 @@
 import Header from '../components/Header';
+import AuthButton from '../components/AuthButton';
 import DynamicNavbar from '../components/DynamicNavbar';
 import FeaturedNews from '../components/FeaturedNews';
 import NewsGrid from '../components/NewsGrid';
@@ -95,7 +96,10 @@ export default function Home() {
     <div className="min-h-screen bg-gray-50">
       <Header />
       <DynamicNavbar />
-
+      <div className="container mx-auto px-4 md:px-6 lg:px-8 mt-4 flex justify-end">
+        {/* Hiển thị AuthButton dưới tên người dùng */}
+        <AuthButton />
+      </div>
       <main className="container mx-auto px-4 md:px-6 lg:px-8">
         {/* Featured Banner Section */}
         {featured.length > 0 && (

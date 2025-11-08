@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { apiClient } from '../lib/api';
-import { Page, SuccessResponse } from '../types/api';
+import { Page } from '../types/api';
 
 export default function IntroPage() {
   const { slug } = useParams<{ slug: string }>();
@@ -17,7 +17,7 @@ export default function IntroPage() {
       setError(null);
       
       try {
-        const response = await apiClient.get<SuccessResponse<Page>>(`/pages/${slug}`);
+        const response = await apiClient.v1PagesDetail({ slug });
         setPage(response.data.data);
         
         // Update page title and meta tags

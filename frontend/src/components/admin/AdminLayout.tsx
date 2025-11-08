@@ -36,7 +36,7 @@ export default function AdminLayout({ title, children }: AdminLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
-  const user = authService.getCurrentUser();
+  const user = authService.getUser();
 
   const handleLogout = async () => {
     await authService.logout();

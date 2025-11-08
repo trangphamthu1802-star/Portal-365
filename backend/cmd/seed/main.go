@@ -37,7 +37,7 @@ func main() {
 	}
 
 	adminUser := &models.User{
-		Email:        "admin@portal365.com",
+		Email:        "administrator",
 		PasswordHash: string(hashedPassword),
 		FullName:     "Admin User",
 		IsActive:     true,
@@ -46,7 +46,7 @@ func main() {
 	if err := repos.Users.Create(ctx, adminUser); err != nil {
 		log.Printf("Admin user might already exist: %v", err)
 		// Fetch existing user
-		existingUser, err := repos.Users.GetByEmail(ctx, "admin@portal365.com")
+		existingUser, err := repos.Users.GetByEmail(ctx, "administrator")
 		if err == nil && existingUser != nil {
 			adminUser = existingUser
 			log.Printf("Using existing admin user with ID: %d", adminUser.ID)

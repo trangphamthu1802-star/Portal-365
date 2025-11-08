@@ -90,11 +90,7 @@ export function isImageUrl(url: string): boolean {
  * Get optimized image URL (if backend supports resizing)
  * For now, returns the original URL
  */
-export function getOptimizedImageUrl(
-  url: string, 
-  width?: number, 
-  height?: number
-): string {
+export function getOptimizedImageUrl(url: string): string {
   // Future: add query params for image resizing
   // Example: return `${url}?w=${width}&h=${height}`;
   return url;

@@ -178,14 +178,20 @@ export const authService = {
       
       if (loginData?.access_token) {
         tokenStorage.setTokens(loginData.access_token, loginData.refresh_token);
-        console.log('Tokens saved, calling getCurrentUser...');
-        // Fetch user info from /api/v1/auth/me
-        const user = await this.getCurrentUser();
-        console.log('getCurrentUser returned:', user);
+        let user = loginData.user;
+        if (!user) {
+          // Fallback: fetch user info from /api/v1/auth/me
+          user = await this.getCurrentUser();
+        }
+        if (user) {
+          tokenStorage.setUser(user);
+          console.log('User saved to localStorage:', user);
+        } else {
+          console.error('No user info found in login response or /auth/me');
+        }
       } else {
         console.error('No access_token in login response');
       }
-      
       return loginData;
     } catch (error: any) {
       console.error('Login error details:', {

@@ -272,7 +272,8 @@ func (h *MediaItemHandler) ListPublic(c *gin.Context) {
 		pageSize = 20
 	}
 
-	items, total, err := h.repo.ListPublished(c.Request.Context(), mediaType, categoryID, page, pageSize)
+	// Show all images regardless of status
+	items, total, err := h.repo.List(c.Request.Context(), mediaType, "", categoryID, page, pageSize)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, dto.ErrorResponse{
 			Error: dto.ErrorDetail{

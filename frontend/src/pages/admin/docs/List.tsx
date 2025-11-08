@@ -1,6 +1,5 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
-import { Upload, Edit, Trash2, Download, FileText, Search, Eye, AlertCircle } from 'lucide-react';
+import { Upload, Trash2, Download, FileText, Search, Eye, AlertCircle } from 'lucide-react';
 import AdminLayout from '../../../components/admin/AdminLayout';
 import LoadingSpinner from '../../../components/common/LoadingSpinner';
 import { useAdminDocsList, useUploadDocument, useDeleteDocument } from '../../../hooks/admin/useAdminDocuments';
@@ -11,14 +10,15 @@ interface Document {
   title: string;
   slug: string;
   description?: string;
-  file_type: string;
+  file_path: string;
   file_size: number;
-  file_url: string;
-  file_name: string;
-  document_no?: string;
-  category_id: number;
-  status: string;
-  published_at?: string;
+  mime_type: string;
+  download_url?: string;
+  preview_url?: string;
+  status: 'draft' | 'published' | 'hidden';
+  category_id?: number;
+  uploaded_by: number;
+  download_count: number;
   created_at: string;
   updated_at: string;
 }
@@ -246,7 +246,7 @@ export default function DocumentsList() {
                     <tr key={doc.id} className="hover:bg-gray-50">
                       <td className="px-6 py-4">
                         <div className="flex items-center">
-                          <span className="text-2xl mr-3">{getFileIcon(doc.file_type)}</span>
+                          <span className="text-2xl mr-3">{getFileIcon(doc.mime_type)}</span>
                           <div>
                             <div className="text-sm font-medium text-gray-900">{doc.title}</div>
                             {doc.description && (
@@ -256,7 +256,7 @@ export default function DocumentsList() {
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {doc.file_type.split('/').pop()?.toUpperCase()}
+                        {doc.mime_type.split('/').pop()?.toUpperCase()}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                         {formatFileSize(doc.file_size)}
@@ -270,7 +270,7 @@ export default function DocumentsList() {
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                         <div className="flex items-center justify-end gap-2">
                           <a
-                            href={`http://localhost:8080${doc.file_url}`}
+                            href={`http://localhost:8080${doc.file_path}`}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="text-blue-600 hover:text-blue-900"
@@ -279,8 +279,8 @@ export default function DocumentsList() {
                             <Eye className="w-4 h-4" />
                           </a>
                           <a
-                            href={`http://localhost:8080${doc.file_url}`}
-                            download={doc.file_name}
+                            href={`http://localhost:8080${doc.file_path}`}
+                            download={doc.title}
                             className="text-green-600 hover:text-green-900"
                             title="Tải xuống"
                           >

@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { apiClient } from '../lib/apiClient';
-import type { Article, ArticlesResponse } from './usePublicArticles';
+import type { ArticlesResponse } from './usePublicArticles';
 
 interface UseCategoryArticlesOptions {
   page?: number;

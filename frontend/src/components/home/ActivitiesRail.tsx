@@ -23,7 +23,7 @@ export default function ActivitiesRail({
   const sideArticles = displayArticles.slice(1, 4);
 
   const getImageUrl = (article: ModelsArticle) =>
-    article.featured_image_url || `https://picsum.photos/seed/${article.id}/800/600`;
+    article.featured_image || `https://picsum.photos/seed/${article.id}/800/600`;
 
   const getSummary = (article: ModelsArticle) =>
     article.summary || '';
@@ -44,7 +44,7 @@ export default function ActivitiesRail({
   return (
     <section className="mb-8" aria-labelledby={`section-${category.slug}`}>
       <SectionHeader
-        title={category.name}
+        title={category?.name || 'Category'}
         viewAllLink={`/c/${category.slug}`}
       />
 

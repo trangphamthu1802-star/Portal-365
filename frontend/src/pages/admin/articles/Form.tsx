@@ -35,8 +35,8 @@ export default function ArticleForm() {
   const isEditMode = !!id;
 
   const { data: article, isLoading: articleLoading } = useAdminArticleById(Number(id) || 0);
-  const { categories, isLoading: categoriesLoading } = useCategories();
-  const { tags, isLoading: tagsLoading } = useTags();
+  const { categories } = useCategories();
+  const { tags } = useTags();
   const createArticle = useCreateArticle();
   const updateArticle = useUpdateArticle();
   const deleteArticle = useDeleteArticle();
@@ -104,7 +104,7 @@ export default function ArticleForm() {
         content: article.content,
         featured_image: article.featured_image,
         category_id: article.category_id,
-        tag_ids: article.tags?.map(t => t.id) || [],
+        tag_ids: article.tags?.map((t: any) => t.id) || [],
         is_featured: article.is_featured,
         scheduled_at: article.scheduled_at || undefined,
       });

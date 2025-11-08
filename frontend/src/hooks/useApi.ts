@@ -3,7 +3,7 @@
  * All hooks follow React Query best practices with typed parameters
  */
 
-import { useQuery, useMutation, useQueryClient, UseQueryOptions, UseMutationOptions } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient, UseQueryOptions } from '@tanstack/react-query';
 import { api } from '@/api/client';
 import type {
   DtoCreateArticleRequest,
@@ -222,8 +222,8 @@ export const useHomeData = (params?: {
   return useQuery({
     queryKey: homeKeys.sections(params ? Object.values(params).map(String) : []),
     queryFn: async () => {
-      const response = await api.v1HomeList(params || {});
-      return (response.data as any)?.data || response.data;
+      // TODO: Implement when backend has home API
+      return { featured: [], latest: [], categories: {} };
     },
     staleTime: 30000,
   });
@@ -244,8 +244,8 @@ export const useBanners = (params?: { placement?: string; active?: boolean; q?: 
   return useQuery({
     queryKey: bannerKeys.list(params),
     queryFn: async () => {
-      const response = await api.adminBannersList(params || {});
-      return (response.data as any)?.data ? response.data : { data: response.data };
+      // TODO: Implement when backend has banners API
+      return { data: [], pagination: { page: 1, page_size: 10, total: 0, total_pages: 1 } };
     },
     staleTime: 60000,
   });
@@ -255,8 +255,8 @@ export const useBannersByPlacement = (placement: string) => {
   return useQuery({
     queryKey: bannerKeys.byPlacement(placement),
     queryFn: async () => {
-      const response = await api.bannersList({ placement });
-      return (response.data as any)?.data || response.data;
+      // TODO: Implement when backend has banners API
+      return { data: [] };
     },
     enabled: !!placement,
     staleTime: 300000, // 5 min for public banners
@@ -266,9 +266,9 @@ export const useBannersByPlacement = (placement: string) => {
 export const useCreateBanner = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (data: any) => {
-      const response = await api.adminBannersCreate(data);
-      return response.data;
+    mutationFn: async (_data: any) => {
+      // TODO: Implement when backend has banners API
+      throw new Error('Banners API not implemented');
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: bannerKeys.all });
@@ -279,9 +279,9 @@ export const useCreateBanner = () => {
 export const useUpdateBanner = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, data }: { id: number; data: any }) => {
-      const response = await api.adminBannersUpdate({ id }, data);
-      return response.data;
+    mutationFn: async () => {
+      // TODO: Implement when backend has banners API
+      throw new Error('Banners API not implemented');
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: bannerKeys.all });
@@ -292,9 +292,9 @@ export const useUpdateBanner = () => {
 export const useDeleteBanner = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (id: number) => {
-      const response = await api.adminBannersDelete({ id });
-      return response.data;
+    mutationFn: async (_id: number) => {
+      // TODO: Implement when backend has banners API
+      throw new Error('Banners API not implemented');
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: bannerKeys.all });
