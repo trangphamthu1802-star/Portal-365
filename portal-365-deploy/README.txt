@@ -1,234 +1,87 @@
-# Portal 365 - Production Deployment Package
+# Portal 365 - Production Deployment
 
-## ✅ Đã Fix: API URLs Tự Động
+## Quick Start
 
-**Package này đã được cấu hình để tự động sử dụng relative paths trong production.**
+1. **Extract this package** to your server
+2. **Edit .env file** and set your JWT_SECRET
+3. **Run the server**: 
+   - Windows: Double-click \start-server.bat\ or run \server.exe\
+   - Linux: \chmod +x server && ./server\
+4. **Access the application**: Open browser and go to \http://YOUR-SERVER-IP:8080\
 
-### Khi truy cập website qua:
-- `http://localhost:8080` → API calls tới `http://localhost:8080/api/v1`
-- `http://192.168.1.100:8080` → API calls tới `http://192.168.1.100:8080/api/v1`
-- `http://yourdomain.com` → API calls tới `http://yourdomain.com/api/v1`
+## What's Included
 
-**Không cần cấu hình thêm!** Frontend tự động gọi đúng domain.
+- \server.exe\ - Backend server (Go binary)
+- \dist/\ - Frontend application (React build)
+- \storage/\ - Uploaded files (images, videos, documents)
+- \portal.db\ - SQLite database with demo data
+- \.env\ - Configuration file
 
----
+## Configuration (.env)
 
-## 🚀 Hướng Dẫn Deploy
+Edit the \.env\ file to configure:
 
-### **Bước 1: Giải nén**
-```powershell
-Expand-Archive portal-365-deploy.zip -DestinationPath D:\portal365
-```
+\\\
+PORT=8080                    # Server port
+APP_ENV=production          # Environment
+JWT_SECRET=CHANGE-THIS      # ⚠️ IMPORTANT: Change this!
+ACCESS_TOKEN_TTL=15m        # Access token lifetime
+REFRESH_TOKEN_TTL=720h      # Refresh token lifetime
+\\\
 
-### **Bước 2: Cấu hình .env**
-```powershell
-cd D:\portal365
-notepad .env
-```
+## Default Admin Account
 
-**Chỉnh sửa:**
-```env
-APP_ENV=production
-JWT_SECRET=<tạo-secret-mới-64-ký-tự>
-CORS_ALLOWED_ORIGINS=*
-PORT=8080
-```
+- Email: \dmin@portal365.com\
+- Password: \dmin123\
 
-**Tạo JWT_SECRET:**
-```powershell
--join ((65..90) + (97..122) + (48..57) | Get-Random -Count 64 | % {[char]$_})
-```
+⚠️ **Change the password immediately after first login!**
 
-### **Bước 3: Mở Firewall**
-```powershell
-New-NetFirewallRule -DisplayName "Portal365" -Direction Inbound -LocalPort 8080 -Protocol TCP -Action Allow
-```
+## Network Access
 
-### **Bước 4: Chạy Server**
-```powershell
-cd D:\portal365
-.\server.exe
-```
+The application will be accessible from any device on your network at:
+- \http://YOUR-SERVER-IP:8080\
+- Example: \http://192.168.6.41:8080\
 
-### **Bước 5: Truy cập**
+## CORS & API
 
-**Trên chính máy server:**
-```
-http://localhost:8080
-```
+✅ **FIXED**: This version supports access from any client IP address.
+- Backend CORS allows all origins in production
+- Frontend uses relative API paths (works with any server IP)
 
-**Từ máy khác trong mạng:**
-```
-http://192.168.1.XXX:8080
-```
-(Tìm IP: `ipconfig | findstr IPv4`)
+## Troubleshooting
 
----
+### Port already in use
+- Change PORT in .env file to another port (e.g., 8081, 8082)
 
-## 🎯 Cải Tiến Mới
+### Cannot access from other devices
+- Check firewall settings on server
+- Ensure port 8080 is open
+- Try: \
+etsh advfirewall firewall add rule name="Portal365" dir=in action=allow protocol=TCP localport=8080\
 
-### **1. API URLs Tự Động**
-- ✅ Không cần hardcode `localhost:8080`
-- ✅ Tự động adapt theo domain truy cập
-- ✅ Hoạt động với mọi IP/domain
+### Database locked error
+- Make sure only one instance of server.exe is running
+- Check if portal.db file has write permissions
 
-### **2. Production Ready**
-- ✅ Frontend build với mode production
-- ✅ Relative paths cho tất cả assets
-- ✅ CORS có thể cấu hình linh hoạt
+## File Structure
 
-### **3. Deployment Đơn Giản**
-- ✅ Chỉ cần giải nén và chạy
-- ✅ Không cần rebuild cho từng server
-- ✅ Một package chạy mọi môi trường
-
----
-
-## 📁 Cấu Trúc Package
-
-```
-portal365/
-├── server.exe          # Backend application
-├── .env                # Configuration
-├── portal.db           # SQLite database
-├── dist/               # Frontend SPA (production build)
+\\\
+portal-365-deploy/
+├── server.exe              # Backend server
+├── .env                    # Configuration
+├── portal.db               # Database
+├── dist/                   # Frontend files
 │   ├── index.html
 │   └── assets/
-│       ├── index-*.js  (Relative API paths: /api/v1)
-│       └── index-*.css
-└── storage/            # Upload directory
+└── storage/                # Uploaded media
     └── uploads/
-```
+        ├── articles/
+        ├── images/
+        ├── videos/
+        ├── documents/
+        └── banners/
+\\\
 
----
+## Support
 
-## 🔐 Bảo Mật
-
-### **1. Đổi JWT Secret (BẮT BUỘC)**
-```env
-JWT_SECRET=<64-random-characters>
-```
-
-### **2. Đổi Password Admin**
-- Login: `http://localhost:8080/admin/login`
-- Email: `admin@portal365.com`
-- Password: `admin123` (ĐỔI NGAY!)
-
-### **3. Giới Hạn CORS (Khuyến nghị)**
-```env
-# Thay vì CORS_ALLOWED_ORIGINS=*
-CORS_ALLOWED_ORIGINS=https://yourdomain.com
-```
-
----
-
-## 🐛 Troubleshooting
-
-### **Lỗi: Mất CSS**
-**Nguyên nhân:** Không chạy server từ đúng thư mục
-
-**Giải pháp:**
-```powershell
-# Phải CD vào thư mục chứa server.exe
-cd D:\portal365
-.\server.exe
-
-# KHÔNG chạy từ nơi khác
-```
-
-### **Lỗi: API 404**
-**Kiểm tra:**
-1. F12 → Console → xem lỗi
-2. F12 → Network → xem request paths
-
-**Xác nhận API paths đúng:**
-- Dev mode: `http://localhost:8080/api/v1/...`
-- Production: `/api/v1/...` (relative)
-
-### **Lỗi: CORS**
-**Nếu thấy lỗi CORS trong Console:**
-```env
-# Sửa .env
-CORS_ALLOWED_ORIGINS=*
-```
-
----
-
-## 📊 Test Deployment
-
-### **1. Test API**
-```
-http://localhost:8080/api/v1/healthz
-```
-Kết quả: `{"status":"ok"}`
-
-### **2. Test Swagger**
-```
-http://localhost:8080/swagger/index.html
-```
-
-### **3. Test Frontend**
-```
-http://localhost:8080
-```
-- Phải thấy giao diện đầy đủ
-- F12 → Console → không có lỗi
-- F12 → Network → API calls tới `/api/v1/*` (relative)
-
----
-
-## 🔄 Windows Service
-
-### **Cài NSSM:**
-```powershell
-# Tải: https://nssm.cc/download
-# Cài đặt:
-nssm install Portal365 "D:\portal365\server.exe"
-nssm set Portal365 AppDirectory "D:\portal365"
-nssm start Portal365
-```
-
-### **Quản lý:**
-```powershell
-nssm start Portal365    # Start
-nssm stop Portal365     # Stop
-nssm restart Portal365  # Restart
-```
-
----
-
-## ✅ Checklist
-
-- [ ] Package đã giải nén
-- [ ] .env đã sửa APP_ENV=production
-- [ ] JWT_SECRET đã đổi
-- [ ] Firewall đã mở port 8080
-- [ ] Server chạy được
-- [ ] Truy cập http://localhost:8080 thấy giao diện
-- [ ] F12 → Console không có lỗi
-- [ ] F12 → Network thấy API calls dùng relative paths
-- [ ] Login admin thành công
-- [ ] Password admin đã đổi
-
----
-
-## 📞 Support
-
-**Files quan trọng:**
-- `server.exe` - Backend
-- `portal.db` - Database (BACKUP!)
-- `.env` - Config
-- `dist/` - Frontend
-
-**Log:** Xem terminal đang chạy server.exe
-
-**Backup database:**
-```powershell
-Copy-Item portal.db portal.db.backup
-```
-
----
-
-**Version:** 2.0 (Relative API Paths)
-**Build Date:** 2025-11-11
-**Ready for Production!** 🚀
+For issues or questions, check the logs in console output.

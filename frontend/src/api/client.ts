@@ -3,7 +3,8 @@ import { Api } from './api';
 import axios from 'axios';
 
 // Generated API already includes /api/v1 in paths, so baseURL should be just the backend URL
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8080';
+// Use window.location.origin for production deployment to work with any server IP
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || window.location.origin;
 const API_BASE_URL = BACKEND_URL;
 
 // Token management utilities

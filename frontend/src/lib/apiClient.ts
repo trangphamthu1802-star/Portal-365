@@ -2,10 +2,12 @@ import axios from 'axios';
 import type { AxiosError, InternalAxiosRequestConfig } from 'axios';
 import type { LoginResponse, SuccessResponse } from '../types/models';
 
-// Use relative path in production, full URL in development
-const API_BASE_URL = import.meta.env.VITE_API_BASE || 
-  (import.meta.env.MODE === 'production' ? '/api/v1' : 'http://localhost:8080/api/v1');
-export const BACKEND_URL = API_BASE_URL.replace('/api/v1', ''); // Empty string in production
+// Use relative path for production deployment (works with any server IP)
+// Or use VITE_API_BASE env variable if provided
+const API_BASE_URL = import.meta.env.VITE_API_BASE || '/api/v1';
+export const BACKEND_URL = API_BASE_URL === '/api/v1' 
+  ? window.location.origin 
+  : API_BASE_URL.replace('/api/v1', '');
 
 // Helper function to get full image URL
 export function getFullImageUrl(path: string): string {

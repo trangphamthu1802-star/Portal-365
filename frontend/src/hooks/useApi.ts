@@ -10,6 +10,9 @@ import type {
   DtoUpdateArticleRequest,
 } from '@/api/data-contracts';
 
+// API Base URL - use relative path for production deployment
+const API_BASE = import.meta.env.VITE_API_BASE || '/api/v1';
+
 // ============================================================================
 // ARTICLES
 // ============================================================================
@@ -329,9 +332,6 @@ export const usePublicMediaItems = (params?: { page?: number; page_size?: number
       if (params?.media_type) queryParams.append('media_type', params.media_type);
       if (params?.category_id) queryParams.append('category_id', params.category_id.toString());
       
-      const API_BASE = import.meta.env.VITE_API_BASE || 
-        (import.meta.env.MODE === 'production' ? '/api/v1' : 'http://localhost:8080/api/v1');
-      
       const response = await fetch(
         `${API_BASE}/media-items?${queryParams}`
       );
@@ -356,7 +356,7 @@ export const useMediaItems = (params?: { page?: number; page_size?: number; type
       
       const token = localStorage.getItem('accessToken');
       const response = await fetch(
-        `${import.meta.env.VITE_API_BASE || 'http://localhost:8080/api/v1'}/admin/media?${queryParams}`,
+        `${API_BASE}/admin/media?${queryParams}`,
         {
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -377,7 +377,7 @@ export const useMediaBySlug = (slug: string) => {
     queryKey: mediaKeys.detail(slug),
     queryFn: async () => {
       const response = await fetch(
-        `${import.meta.env.VITE_API_BASE || 'http://localhost:8080/api/v1'}/media/${slug}`
+        `${API_BASE}/media/${slug}`
       );
       if (!response.ok) {
         throw new Error('Failed to fetch media');
@@ -395,7 +395,7 @@ export const useUploadMedia = () => {
     mutationFn: async (formData: FormData) => {
       const token = localStorage.getItem('accessToken');
       const response = await fetch(
-        `${import.meta.env.VITE_API_BASE || 'http://localhost:8080/api/v1'}/admin/media/upload`,
+        `${API_BASE}/admin/media/upload`,
         {
           method: 'POST',
           headers: {
@@ -422,7 +422,7 @@ export const useDeleteMedia = () => {
     mutationFn: async (id: number) => {
       const token = localStorage.getItem('accessToken');
       const response = await fetch(
-        `${import.meta.env.VITE_API_BASE || 'http://localhost:8080/api/v1'}/admin/media/${id}`,
+        `${API_BASE}/admin/media/${id}`,
         {
           method: 'DELETE',
           headers: {
@@ -468,7 +468,7 @@ export const useDocuments = (params?: { page?: number; page_size?: number; categ
       if (params?.page_size) queryParams.append('page_size', params.page_size.toString());
       if (params?.category_id) queryParams.append('category_id', params.category_id.toString());
       
-      const response = await fetch(`${import.meta.env.VITE_API_BASE || 'http://localhost:8080/api/v1'}/documents?${queryParams}`);
+      const response = await fetch(`${API_BASE}/documents?${queryParams}`);
       return response.json();
     },
     staleTime: 60000,
@@ -487,7 +487,7 @@ export const useAdminDocuments = (params?: { page?: number; page_size?: number; 
       
       const token = localStorage.getItem('accessToken');
       const response = await fetch(
-        `${import.meta.env.VITE_API_BASE || 'http://localhost:8080/api/v1'}/admin/documents?${queryParams}`,
+        `${API_BASE}/admin/documents?${queryParams}`,
         {
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -506,7 +506,7 @@ export const useUploadDocument = () => {
     mutationFn: async (formData: FormData) => {
       const token = localStorage.getItem('accessToken');
       const response = await fetch(
-        `${import.meta.env.VITE_API_BASE || 'http://localhost:8080/api/v1'}/admin/documents/upload`,
+        `${API_BASE}/admin/documents/upload`,
         {
           method: 'POST',
           headers: {
@@ -533,7 +533,7 @@ export const useDeleteDocument = () => {
     mutationFn: async (id: number) => {
       const token = localStorage.getItem('accessToken');
       const response = await fetch(
-        `${import.meta.env.VITE_API_BASE || 'http://localhost:8080/api/v1'}/admin/documents/${id}`,
+        `${API_BASE}/admin/documents/${id}`,
         {
           method: 'DELETE',
           headers: {
