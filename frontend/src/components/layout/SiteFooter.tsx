@@ -24,8 +24,9 @@ export default function SiteFooter() {
                 {settings?.site_title || 'SƯ ĐOÀN 365'}
               </span>
             </Link>
-            <p className="text-sm text-gray-400 mb-4">
-              <span className="whitespace-nowrap">Cổng thông tin điện tử Sư đoàn 365 - Quân chủng Phòng không - Không quân.</span> Cơ động chiến đấu, chốt trụ kiên cường, đánh thắng địch trong mọi tình huống.
+            <p className="text-sm text-gray-400 mb-4 leading-relaxed">
+              Cổng thông tin điện tử Sư đoàn 365 - Quân chủng Phòng không - Không quân. 
+              Cơ động chiến đấu, chốt trụ kiên cường, đánh thắng địch trong mọi tình huống.
             </p>
             
             {/* Social Links */}
