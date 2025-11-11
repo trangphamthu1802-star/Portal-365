@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Admin Articles - Portal 365</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 50px auto;
+            padding: 20px;
+        }
+        .test-section {
+            background: #f5f5f5;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+        }
+        .success { color: #22c55e; font-weight: bold; }
+        .error { color: #ef4444; font-weight: bold; }
+        button {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #2563eb;
+        }
+        pre {
+            background: #1f2937;
+            color: #e5e7eb;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+        }
+        .info {
+            background: #dbeafe;
+            border-left: 4px solid #3b82f6;
+            padding: 15px;
+            margin: 15px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔧 Portal 365 - Admin Articles Test</h1>
+    
+    <div class="info">
+        <strong>Hướng dẫn:</strong>
+        <ol>
+            <li>Click "Test Backend" để kiểm tra server backend</li>
+            <li>Click "Login" để đăng nhập</li>
+            <li>Click "Get Articles" để lấy danh sách bài viết</li>
+        </ol>
+    </div>
+
+    <div class="test-section">
+        <h2>1. Backend Health Check</h2>
+        <button onclick="testBackend()">Test Backend</button>
+        <div id="backend-result"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>2. Login</h2>
+        <input type="email" id="email" value="admin@portal365.com" placeholder="Email" style="padding: 8px; width: 250px;">
+        <input type="password" id="password" value="admin123" placeholder="Password" style="padding: 8px; width: 250px;">
+        <button onclick="login()">Login</button>
+        <button onclick="checkToken()">Check Token</button>
+        <button onclick="clearToken()">Clear Token</button>
+        <div id="login-result"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>3. Get Admin Articles</h2>
+        <button onclick="getArticles()">Get Articles</button>
+        <div id="articles-result"></div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:8080/api/v1';
+
+        async function testBackend() {
+            const result = document.getElementById('backend-result');
+            result.innerHTML = '<p>Testing...</p>';
+            
+            try {
+                const response = await fetch(`${API_BASE}/healthz`);
+                const data = await response.json();
+                result.innerHTML = `<p class="success">✅ Backend is running</p><pre>${JSON.stringify(data, null, 2)}</pre>`;
+            } catch (error) {
+                result.innerHTML = `<p class="error">❌ Backend not running: ${error.message}</p>`;
+            }
+        }
+
+        async function login() {
+            const result = document.getElementById('login-result');
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            
+            result.innerHTML = '<p>Logging in...</p>';
+            
+            try {
+                const response = await fetch(`${API_BASE}/auth/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ email, password })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Login failed: ${response.status}`);
+                }
+
+                const data = await response.json();
+                const token = data.data.access_token;
+                const refreshToken = data.data.refresh_token;
+                
+                // Save to localStorage
+                localStorage.setItem('access_token', token);
+                localStorage.setItem('refresh_token', refreshToken);
+                localStorage.setItem('user', JSON.stringify(data.data.user));
+                
+                result.innerHTML = `
+                    <p class="success">✅ Login successful!</p>
+                    <p>User: ${data.data.user.email}</p>
+                    <p>Roles: ${data.data.user.roles.join(', ')}</p>
+                    <p>Token: ${token.substring(0, 30)}...</p>
+                `;
+            } catch (error) {
+                result.innerHTML = `<p class="error">❌ Login failed: ${error.message}</p>`;
+            }
+        }
+
+        function checkToken() {
+            const result = document.getElementById('login-result');
+            const token = localStorage.getItem('access_token');
+            const user = localStorage.getItem('user');
+            
+            if (token) {
+                result.innerHTML = `
+                    <p class="success">✅ Token found</p>
+                    <p>Token: ${token.substring(0, 30)}...</p>
+                    <p>User: ${user}</p>
+                `;
+            } else {
+                result.innerHTML = '<p class="error">❌ No token found. Please login.</p>';
+            }
+        }
+
+        function clearToken() {
+            localStorage.removeItem('access_token');
+            localStorage.removeItem('refresh_token');
+            localStorage.removeItem('user');
+            document.getElementById('login-result').innerHTML = '<p class="success">✅ Token cleared</p>';
+        }
+
+        async function getArticles() {
+            const result = document.getElementById('articles-result');
+            const token = localStorage.getItem('access_token');
+            
+            if (!token) {
+                result.innerHTML = '<p class="error">❌ Please login first!</p>';
+                return;
+            }
+
+            result.innerHTML = '<p>Loading articles...</p>';
+            
+            try {
+                const response = await fetch(`${API_BASE}/admin/articles?page=1&page_size=20`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(`${response.status}: ${errorData.error?.message || 'Unknown error'}`);
+                }
+
+                const data = await response.json();
+                const articles = data.data;
+                const pagination = data.pagination;
+                
+                let html = `<p class="success">✅ Found ${articles.length} articles (Total: ${pagination.total})</p>`;
+                html += '<h3>Articles:</h3><ul>';
+                
+                articles.forEach(article => {
+                    html += `<li><strong>[${article.status}]</strong> ${article.title} (ID: ${article.id})</li>`;
+                });
+                
+                html += '</ul>';
+                html += `<pre>${JSON.stringify(pagination, null, 2)}</pre>`;
+                
+                result.innerHTML = html;
+            } catch (error) {
+                result.innerHTML = `<p class="error">❌ Failed to fetch articles: ${error.message}</p>`;
+            }
+        }
+
+        // Auto-check on load
+        window.onload = () => {
+            testBackend();
+            checkToken();
+        };
+    </script>
+</body>
+</html>

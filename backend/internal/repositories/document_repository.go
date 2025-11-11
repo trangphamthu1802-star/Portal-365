@@ -33,12 +33,12 @@ func (r *documentRepository) Create(ctx context.Context, doc *models.Document) e
 	doc.UpdatedAt = now
 
 	result, err := r.db.ExecContext(ctx,
-		`INSERT INTO documents (title, slug, description, category_id, file_url, file_name, 
-		 file_size, file_type, document_no, issued_date, uploaded_by, status, published_at, 
+		`INSERT INTO documents (title, slug, description, category_id, file_path, 
+		 file_size, mime_type, document_no, issued_date, uploaded_by, status, published_at, 
 		 created_at, updated_at) 
-		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		doc.Title, doc.Slug, doc.Description, doc.CategoryID, doc.FileURL, doc.FileName,
-		doc.FileSize, doc.FileType, doc.DocumentNo, doc.IssuedDate, doc.UploadedBy,
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		doc.Title, doc.Slug, doc.Description, doc.CategoryID, doc.FilePath,
+		doc.FileSize, doc.MimeType, doc.DocumentNo, doc.IssuedDate, doc.UploadedBy,
 		doc.Status, doc.PublishedAt, doc.CreatedAt, doc.UpdatedAt)
 	if err != nil {
 		return err
@@ -51,13 +51,13 @@ func (r *documentRepository) Create(ctx context.Context, doc *models.Document) e
 func (r *documentRepository) GetByID(ctx context.Context, id int64) (*models.Document, error) {
 	doc := &models.Document{}
 	err := r.db.QueryRowContext(ctx,
-		`SELECT id, title, slug, description, category_id, file_url, file_name, file_size, 
-		 file_type, document_no, issued_date, uploaded_by, view_count, status, published_at, 
+		`SELECT id, title, slug, description, category_id, file_path, file_size, 
+		 mime_type, document_no, issued_date, uploaded_by, view_count, download_count, status, published_at, 
 		 created_at, updated_at 
 		 FROM documents WHERE id = ?`, id).Scan(
-		&doc.ID, &doc.Title, &doc.Slug, &doc.Description, &doc.CategoryID, &doc.FileURL,
-		&doc.FileName, &doc.FileSize, &doc.FileType, &doc.DocumentNo, &doc.IssuedDate,
-		&doc.UploadedBy, &doc.ViewCount, &doc.Status, &doc.PublishedAt,
+		&doc.ID, &doc.Title, &doc.Slug, &doc.Description, &doc.CategoryID, &doc.FilePath,
+		&doc.FileSize, &doc.MimeType, &doc.DocumentNo, &doc.IssuedDate,
+		&doc.UploadedBy, &doc.ViewCount, &doc.DownloadCount, &doc.Status, &doc.PublishedAt,
 		&doc.CreatedAt, &doc.UpdatedAt)
 	if err != nil {
 		return nil, err
@@ -68,13 +68,13 @@ func (r *documentRepository) GetByID(ctx context.Context, id int64) (*models.Doc
 func (r *documentRepository) GetBySlug(ctx context.Context, slug string) (*models.Document, error) {
 	doc := &models.Document{}
 	err := r.db.QueryRowContext(ctx,
-		`SELECT id, title, slug, description, category_id, file_url, file_name, file_size, 
-		 file_type, document_no, issued_date, uploaded_by, view_count, status, published_at, 
+		`SELECT id, title, slug, description, category_id, file_path, file_size, 
+		 mime_type, document_no, issued_date, uploaded_by, view_count, download_count, status, published_at, 
 		 created_at, updated_at 
 		 FROM documents WHERE slug = ?`, slug).Scan(
-		&doc.ID, &doc.Title, &doc.Slug, &doc.Description, &doc.CategoryID, &doc.FileURL,
-		&doc.FileName, &doc.FileSize, &doc.FileType, &doc.DocumentNo, &doc.IssuedDate,
-		&doc.UploadedBy, &doc.ViewCount, &doc.Status, &doc.PublishedAt,
+		&doc.ID, &doc.Title, &doc.Slug, &doc.Description, &doc.CategoryID, &doc.FilePath,
+		&doc.FileSize, &doc.MimeType, &doc.DocumentNo, &doc.IssuedDate,
+		&doc.UploadedBy, &doc.ViewCount, &doc.DownloadCount, &doc.Status, &doc.PublishedAt,
 		&doc.CreatedAt, &doc.UpdatedAt)
 	if err != nil {
 		return nil, err
@@ -87,11 +87,11 @@ func (r *documentRepository) Update(ctx context.Context, doc *models.Document) e
 
 	_, err := r.db.ExecContext(ctx,
 		`UPDATE documents SET title = ?, slug = ?, description = ?, category_id = ?, 
-		 file_url = ?, file_name = ?, file_size = ?, file_type = ?, document_no = ?, 
+		 file_path = ?, file_size = ?, mime_type = ?, document_no = ?, 
 		 issued_date = ?, status = ?, published_at = ?, updated_at = ? 
 		 WHERE id = ?`,
-		doc.Title, doc.Slug, doc.Description, doc.CategoryID, doc.FileURL, doc.FileName,
-		doc.FileSize, doc.FileType, doc.DocumentNo, doc.IssuedDate, doc.Status,
+		doc.Title, doc.Slug, doc.Description, doc.CategoryID, doc.FilePath,
+		doc.FileSize, doc.MimeType, doc.DocumentNo, doc.IssuedDate, doc.Status,
 		doc.PublishedAt, doc.UpdatedAt, doc.ID)
 	return err
 }
@@ -116,8 +116,8 @@ func (r *documentRepository) List(ctx context.Context, status string, categoryID
 	offset := (page - 1) * pageSize
 
 	// Build query
-	query := `SELECT id, title, slug, description, category_id, file_url, file_name, file_size, 
-	          file_type, document_no, issued_date, uploaded_by, view_count, status, published_at, 
+	query := `SELECT id, title, slug, description, category_id, file_path, file_size, 
+	          mime_type, document_no, issued_date, uploaded_by, view_count, download_count, status, published_at, 
 	          created_at, updated_at FROM documents WHERE 1=1`
 	countQuery := `SELECT COUNT(*) FROM documents WHERE 1=1`
 	args := []interface{}{}
@@ -155,8 +155,8 @@ func (r *documentRepository) List(ctx context.Context, status string, categoryID
 	for rows.Next() {
 		var doc models.Document
 		if err := rows.Scan(&doc.ID, &doc.Title, &doc.Slug, &doc.Description, &doc.CategoryID,
-			&doc.FileURL, &doc.FileName, &doc.FileSize, &doc.FileType, &doc.DocumentNo,
-			&doc.IssuedDate, &doc.UploadedBy, &doc.ViewCount, &doc.Status, &doc.PublishedAt,
+			&doc.FilePath, &doc.FileSize, &doc.MimeType, &doc.DocumentNo,
+			&doc.IssuedDate, &doc.UploadedBy, &doc.ViewCount, &doc.DownloadCount, &doc.Status, &doc.PublishedAt,
 			&doc.CreatedAt, &doc.UpdatedAt); err != nil {
 			return nil, 0, err
 		}
@@ -169,8 +169,8 @@ func (r *documentRepository) List(ctx context.Context, status string, categoryID
 func (r *documentRepository) ListPublished(ctx context.Context, categoryID *int64, page, pageSize int) ([]models.Document, int, error) {
 	offset := (page - 1) * pageSize
 
-	query := `SELECT id, title, slug, description, category_id, file_url, file_name, file_size, 
-	          file_type, document_no, issued_date, uploaded_by, view_count, status, published_at, 
+	query := `SELECT id, title, slug, description, category_id, file_path, file_size, 
+	          mime_type, document_no, issued_date, uploaded_by, view_count, download_count, status, published_at, 
 	          created_at, updated_at FROM documents WHERE status = 'published'`
 	countQuery := `SELECT COUNT(*) FROM documents WHERE status = 'published'`
 	args := []interface{}{}
@@ -202,8 +202,8 @@ func (r *documentRepository) ListPublished(ctx context.Context, categoryID *int6
 	for rows.Next() {
 		var doc models.Document
 		if err := rows.Scan(&doc.ID, &doc.Title, &doc.Slug, &doc.Description, &doc.CategoryID,
-			&doc.FileURL, &doc.FileName, &doc.FileSize, &doc.FileType, &doc.DocumentNo,
-			&doc.IssuedDate, &doc.UploadedBy, &doc.ViewCount, &doc.Status, &doc.PublishedAt,
+			&doc.FilePath, &doc.FileSize, &doc.MimeType, &doc.DocumentNo,
+			&doc.IssuedDate, &doc.UploadedBy, &doc.ViewCount, &doc.DownloadCount, &doc.Status, &doc.PublishedAt,
 			&doc.CreatedAt, &doc.UpdatedAt); err != nil {
 			return nil, 0, err
 		}

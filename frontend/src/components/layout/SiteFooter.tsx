@@ -24,9 +24,8 @@ export default function SiteFooter() {
                 {settings?.site_title || 'SƯ ĐOÀN 365'}
               </span>
             </Link>
-            <p className="text-sm text-gray-400 mb-4 leading-relaxed">
-              Cổng thông tin điện tử Sư đoàn 365 - Quân chủng Phòng không - Không quân. 
-              Cơ động chiến đấu, chốt trụ kiên cường, đánh thắng địch trong mọi tình huống.
+            <p className="text-sm text-gray-400 mb-4">
+              <span className="whitespace-nowrap">Cổng thông tin điện tử Sư đoàn 365 - Quân chủng Phòng không - Không quân.</span> Cơ động chiến đấu, chốt trụ kiên cường, đánh thắng địch trong mọi tình huống.
             </p>
             
             {/* Social Links */}
@@ -68,22 +67,22 @@ export default function SiteFooter() {
             <h3 className="text-lg font-bold text-white mb-4">Giới thiệu</h3>
             <ul className="space-y-2 text-sm">
               <li>
-                <Link to="/intro/history" className="hover:text-white transition-colors">
+                <Link to="/gioi-thieu/lich-su-truyen-thong" className="hover:text-white transition-colors">
                   Lịch sử truyền thống
                 </Link>
               </li>
               <li>
-                <Link to="/intro/organization" className="hover:text-white transition-colors">
-                  Tổ chức đơn vị
+                <Link to="/gioi-thieu/to-chuc-don-vi" className="hover:text-white transition-colors">
+                  Cơ cấu tổ chức
                 </Link>
               </li>
               <li>
-                <Link to="/intro/leadership" className="hover:text-white transition-colors">
-                  Lãnh đạo Sư đoàn
+                <Link to="/gioi-thieu/lanh-dao-su-doan" className="hover:text-white transition-colors">
+                  Lãnh đạo chỉ huy Sư đoàn
                 </Link>
               </li>
               <li>
-                <Link to="/intro/achievements" className="hover:text-white transition-colors">
+                <Link to="/gioi-thieu/thanh-tich-don-vi" className="hover:text-white transition-colors">
                   Thành tích đơn vị
                 </Link>
               </li>
@@ -95,22 +94,22 @@ export default function SiteFooter() {
             <h3 className="text-lg font-bold text-white mb-4">Chuyên mục</h3>
             <ul className="space-y-2 text-sm">
               <li>
-                <Link to="/c/hoat-dong" className="hover:text-white transition-colors">
+                <Link to="/hoat-dong" className="hover:text-white transition-colors">
                   Hoạt động
                 </Link>
               </li>
               <li>
-                <Link to="/c/tin-tuc" className="hover:text-white transition-colors">
+                <Link to="/tin-tuc" className="hover:text-white transition-colors">
                   Tin tức
                 </Link>
               </li>
               <li>
-                <Link to="/c/kho-van-ban" className="hover:text-white transition-colors">
+                <Link to="/docs" className="hover:text-white transition-colors">
                   Kho văn bản
                 </Link>
               </li>
               <li>
-                <Link to="/c/media" className="hover:text-white transition-colors">
+                <Link to="/media/videos" className="hover:text-white transition-colors">
                   Media
                 </Link>
               </li>
@@ -128,28 +127,6 @@ export default function SiteFooter() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                   </svg>
                   <span>{settings.contact.address}</span>
-                </li>
-              )}
-              
-              {settings?.contact?.phone && (
-                <li className="flex items-center gap-2">
-                  <svg className="w-5 h-5 text-green-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-                  </svg>
-                  <a href={`tel:${settings.contact.phone}`} className="hover:text-white transition-colors">
-                    {settings.contact.phone}
-                  </a>
-                </li>
-              )}
-              
-              {settings?.contact?.email && (
-                <li className="flex items-center gap-2">
-                  <svg className="w-5 h-5 text-green-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                  </svg>
-                  <a href={`mailto:${settings.contact.email}`} className="hover:text-white transition-colors">
-                    {settings.contact.email}
-                  </a>
                 </li>
               )}
             </ul>

@@ -83,19 +83,20 @@ func main() {
 	// Swagger documentation
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
+	// Serve static files from dist folder FIRST (before routes)
+	// This must come before routes.Setup to ensure static files are served properly
+	r.Static("/assets", "./dist/assets")
+	r.StaticFile("/vite.svg", "./dist/vite.svg")
+	r.StaticFile("/favicon.ico", "./dist/favicon.ico")
+
 	// Initialize repositories
 	repos := database.NewRepositories(db)
 
 	// Setup API routes
 	routes.Setup(r, cfg, repos)
 
-	// Serve static files from frontend build
-	// This serves the React app for all non-API routes
-	r.Static("/assets", "../frontend/dist/assets")
-	r.StaticFile("/vite.svg", "../frontend/dist/vite.svg")
-
 	// Serve index.html for all routes that don't match API or static files
-	// This enables React Router to work properly
+	// This enables React Router to work properly with SPA
 	r.NoRoute(func(c *gin.Context) {
 		// Don't serve index.html for API routes or Swagger
 		path := c.Request.URL.Path
@@ -107,8 +108,16 @@ func main() {
 			c.JSON(404, gin.H{"error": "Not found"})
 			return
 		}
-		// Serve the React app
-		c.File("../frontend/dist/index.html")
+		if len(path) >= 7 && path[:7] == "/static" {
+			c.JSON(404, gin.H{"error": "Static file not found"})
+			return
+		}
+		if len(path) >= 7 && path[:7] == "/assets" {
+			c.JSON(404, gin.H{"error": "Asset not found"})
+			return
+		}
+		// Serve the React SPA
+		c.File("./dist/index.html")
 	})
 
 	// Start server

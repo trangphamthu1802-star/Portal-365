@@ -1,32 +1,13 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { Info, Activity, Newspaper, BookOpen, FileText, Camera, Menu, X, ChevronDown, Search } from 'lucide-react';
-import { apiClient } from '../lib/apiClient';
-import { Page, SuccessResponse } from '../types/api';
 import AuthButton from './AuthButton';
 
 const Navbar = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [introPages, setIntroPages] = useState<Page[]>([]);
   const navigate = useNavigate();
-
-  useEffect(() => {
-    const fetchIntroPages = async () => {
-      try {
-        // Use new introduction API endpoint
-        const response = await apiClient.get<SuccessResponse<any[]>>('/introduction');
-        const pages = response.data.data;
-        setIntroPages(pages);
-      } catch (error) {
-        console.error('Error fetching intro pages:', error);
-        // Fallback to empty array if API fails
-        setIntroPages([]);
-      }
-    };
-    fetchIntroPages();
-  }, []);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -46,10 +27,12 @@ const Navbar = () => {
   ];
 
   const dropdownMenus = {
-    gioithieu: introPages.map(page => ({
-      name: page.title,
-      path: `/intro/${page.slug}`
-    })),
+    gioithieu: [
+      { name: 'Lịch sử truyền thống', path: '/gioi-thieu/lich-su-truyen-thong' },
+      { name: 'Tổ chức đơn vị', path: '/gioi-thieu/to-chuc-don-vi' },
+      { name: 'Lãnh đạo Sư đoàn', path: '/gioi-thieu/lanh-dao-su-doan' },
+      { name: 'Thành tích đơn vị', path: '/gioi-thieu/thanh-tich-don-vi' },
+    ],
     hoatdong: [
       { name: 'Hoạt động của thủ trưởng sư đoàn', path: '/hoat-dong/thu-truong' },
       { name: 'Hoạt động của Sư đoàn', path: '/hoat-dong/su-doan' },

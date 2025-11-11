@@ -102,7 +102,7 @@ export default function DocsIndex() {
           </div>
         </div>
 
-        {/* Documents List */}
+        {/* Documents Grid */}
         {isLoading ? (
           <div className="text-center py-12">
             <LoadingSpinner />
@@ -115,55 +115,81 @@ export default function DocsIndex() {
           </div>
         ) : filteredDocs.length > 0 ? (
           <>
-            <div className="space-y-4 mb-8">
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
               {filteredDocs.map((doc: any) => (
-                <div key={doc.id} className="bg-white rounded-lg shadow hover:shadow-lg transition-shadow p-6">
-                  <div className="flex items-start gap-4">
-                    <div className="text-4xl">{getFileIcon(doc.file_type)}</div>
-                    <div className="flex-1 min-w-0">
-                      <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                        {doc.title}
-                      </h3>
-                      {doc.description && (
-                        <p className="text-gray-600 text-sm mb-3 line-clamp-2">
-                          {doc.description}
-                        </p>
-                      )}
-                      <div className="flex flex-wrap gap-4 text-sm text-gray-500">
-                        <span className="flex items-center gap-1">
-                          <FileText className="w-4 h-4" />
-                          {doc.file_type || 'N/A'}
-                        </span>
-                        <span>{formatFileSize(doc.file_size)}</span>
-                        {doc.published_at && (
-                          <span className="flex items-center gap-1">
-                            <Calendar className="w-4 h-4" />
-                            {new Date(doc.published_at).toLocaleDateString('vi-VN')}
-                          </span>
-                        )}
+                <div 
+                  key={doc.id} 
+                  className="group bg-white rounded-xl shadow-sm hover:shadow-xl transition-all duration-300 border border-gray-100 overflow-hidden"
+                >
+                  {/* Document Header with Icon */}
+                  <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-6 border-b border-gray-100">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3 mb-3">
+                          <div className="text-5xl">
+                            {getFileIcon(doc.mime_type || doc.file_type || '')}
+                          </div>
+                          <div className="flex-1">
+                            <span className="inline-block px-3 py-1 bg-blue-100 text-blue-700 text-xs font-semibold rounded-full">
+                              {(doc.mime_type || doc.file_type || 'FILE')?.split('/').pop()?.toUpperCase()}
+                            </span>
+                          </div>
+                        </div>
                       </div>
                     </div>
-                    <div className="flex gap-2">
-                      {doc.file_url && (
-                        <>
-                          <button
-                            onClick={() => setPreviewDoc(doc)}
-                            className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
-                            title="Xem trước"
-                          >
-                            <Eye className="w-5 h-5" />
-                          </button>
-                          <a
-                            href={doc.file_url}
-                            download
-                            className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
-                            title="Tải về"
-                          >
-                            <Download className="w-5 h-5" />
-                          </a>
-                        </>
+                  </div>
+
+                  {/* Document Info */}
+                  <div className="p-6">
+                    <h3 className="font-bold text-gray-900 mb-3 line-clamp-2 group-hover:text-blue-600 transition-colors min-h-[3rem]">
+                      {doc.title}
+                    </h3>
+                    
+                    {doc.description && (
+                      <p className="text-sm text-gray-600 mb-4 line-clamp-2">
+                        {doc.description}
+                      </p>
+                    )}
+
+                    {/* Metadata */}
+                    <div className="flex items-center gap-4 text-xs text-gray-500 mb-4 pb-4 border-b border-gray-100">
+                      <div className="flex items-center gap-1">
+                        <FileText className="w-3.5 h-3.5" />
+                        <span>{formatFileSize(doc.file_size || 0)}</span>
+                      </div>
+                      {(doc.created_at || doc.published_at) && (
+                        <div className="flex items-center gap-1">
+                          <Calendar className="w-3.5 h-3.5" />
+                          <span>{new Date(doc.created_at || doc.published_at).toLocaleDateString('vi-VN')}</span>
+                        </div>
                       )}
                     </div>
+
+                    {/* Action Buttons */}
+                    <div className="grid grid-cols-2 gap-3">
+                      <button
+                        onClick={() => setPreviewDoc(doc)}
+                        className="flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 shadow-sm hover:shadow-md font-medium"
+                      >
+                        <Eye className="w-4 h-4" />
+                        <span>Xem</span>
+                      </button>
+                      <a
+                        href={`http://localhost:8080${doc.file_path || doc.file_url}`}
+                        download={doc.title}
+                        className="flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-lg hover:from-green-700 hover:to-emerald-700 transition-all duration-200 shadow-sm hover:shadow-md font-medium"
+                      >
+                        <Download className="w-4 h-4" />
+                        <span>Tải về</span>
+                      </a>
+                    </div>
+
+                    {/* Download Count */}
+                    {doc.download_count > 0 && (
+                      <div className="mt-3 text-center text-xs text-gray-400">
+                        Đã tải: {doc.download_count} lần
+                      </div>
+                    )}
                   </div>
                 </div>
               ))}
@@ -189,33 +215,61 @@ export default function DocsIndex() {
         )}
       </main>
 
-      {/* PDF Preview Modal */}
-      {previewDoc && previewDoc.file_url && (
+      {/* Enhanced PDF Preview Modal */}
+      {previewDoc && (
         <Modal
           isOpen={true}
           onClose={() => setPreviewDoc(null)}
           title={previewDoc.title}
         >
-          <div className="w-full h-[80vh]">
-            {previewDoc.file_url.toLowerCase().endsWith('.pdf') ? (
-              <iframe
-                src={previewDoc.file_url}
-                className="w-full h-full border-0"
-                title={previewDoc.title}
-              />
-            ) : (
-              <div className="flex flex-col items-center justify-center h-full">
-                <FileText className="w-16 h-16 text-gray-400 mb-4" />
-                <p className="text-gray-600 mb-4">Không thể xem trước file này</p>
+          <div className="space-y-4">
+            {/* Document Info Bar */}
+            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-4 border border-blue-100">
+              <div className="flex items-center justify-between flex-wrap gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="text-3xl">{getFileIcon(previewDoc.mime_type || previewDoc.file_type || '')}</div>
+                  <div>
+                    <h4 className="font-semibold text-gray-900">{previewDoc.title}</h4>
+                    <p className="text-sm text-gray-600">
+                      {formatFileSize(previewDoc.file_size || 0)} • {(previewDoc.mime_type || previewDoc.file_type || '')?.split('/').pop()?.toUpperCase()}
+                    </p>
+                  </div>
+                </div>
                 <a
-                  href={previewDoc.file_url}
-                  download
-                  className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+                  href={`http://localhost:8080${previewDoc.file_path || previewDoc.file_url}`}
+                  download={previewDoc.title}
+                  className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-lg hover:from-green-700 hover:to-emerald-700 transition-all shadow-sm hover:shadow-md font-medium"
                 >
+                  <Download className="w-4 h-4" />
                   Tải về
                 </a>
               </div>
-            )}
+            </div>
+
+            {/* PDF Viewer */}
+            <div className="w-full h-[70vh] rounded-lg overflow-hidden border border-gray-200 bg-gray-50">
+              {(previewDoc.file_path || previewDoc.file_url)?.toLowerCase().endsWith('.pdf') ? (
+                <iframe
+                  src={`http://localhost:8080${previewDoc.file_path || previewDoc.file_url}`}
+                  className="w-full h-full border-0"
+                  title={previewDoc.title}
+                />
+              ) : (
+                <div className="flex flex-col items-center justify-center h-full">
+                  <FileText className="w-20 h-20 text-gray-400 mb-4" />
+                  <p className="text-gray-600 mb-2 font-medium">Không thể xem trước loại file này</p>
+                  <p className="text-sm text-gray-500 mb-6">Vui lòng tải về để xem nội dung</p>
+                  <a
+                    href={`http://localhost:8080${previewDoc.file_path || previewDoc.file_url}`}
+                    download={previewDoc.title}
+                    className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-lg hover:from-green-700 hover:to-emerald-700 transition-all shadow-sm hover:shadow-md font-medium"
+                  >
+                    <Download className="w-5 h-5" />
+                    Tải về ngay
+                  </a>
+                </div>
+              )}
+            </div>
           </div>
         </Modal>
       )}

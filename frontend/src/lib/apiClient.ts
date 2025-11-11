@@ -2,7 +2,19 @@ import axios from 'axios';
 import type { AxiosError, InternalAxiosRequestConfig } from 'axios';
 import type { LoginResponse, SuccessResponse } from '../types/models';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE || 'http://localhost:8080/api/v1';
+// Use relative path in production, full URL in development
+const API_BASE_URL = import.meta.env.VITE_API_BASE || 
+  (import.meta.env.MODE === 'production' ? '/api/v1' : 'http://localhost:8080/api/v1');
+export const BACKEND_URL = API_BASE_URL.replace('/api/v1', ''); // Empty string in production
+
+// Helper function to get full image URL
+export function getFullImageUrl(path: string): string {
+  if (!path) return '';
+  if (path.startsWith('http://') || path.startsWith('https://')) {
+    return path;
+  }
+  return `${BACKEND_URL}${path}`;
+}
 
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,
@@ -39,6 +51,8 @@ const PUBLIC_ENDPOINTS = [
 
 const isPublicEndpoint = (url?: string): boolean => {
   if (!url) return false;
+  // Don't treat admin endpoints as public
+  if (url.includes('/admin/')) return false;
   return PUBLIC_ENDPOINTS.some(endpoint => url.includes(endpoint));
 };
 

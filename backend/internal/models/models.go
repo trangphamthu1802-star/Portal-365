@@ -7,7 +7,7 @@ type User struct {
 	Email        string    `json:"email" db:"email"`
 	PasswordHash string    `json:"-" db:"password_hash"`
 	FullName     string    `json:"full_name" db:"full_name"`
-	Avatar       string    `json:"avatar" db:"avatar"`
+	Avatar       *string   `json:"avatar,omitempty" db:"avatar"`
 	IsActive     bool      `json:"is_active" db:"is_active"`
 	CreatedAt    time.Time `json:"created_at" db:"created_at"`
 	UpdatedAt    time.Time `json:"updated_at" db:"updated_at"`
@@ -210,23 +210,25 @@ type ViewLog struct {
 
 // Document represents a document in the document library (Kho văn bản)
 type Document struct {
-	ID          int64      `json:"id" db:"id"`
-	Title       string     `json:"title" db:"title"`
-	Slug        string     `json:"slug" db:"slug"`
-	Description string     `json:"description" db:"description"`
-	CategoryID  int64      `json:"category_id" db:"category_id"`
-	FileURL     string     `json:"file_url" db:"file_url"`
-	FileName    string     `json:"file_name" db:"file_name"`
-	FileSize    int64      `json:"file_size" db:"file_size"`
-	FileType    string     `json:"file_type" db:"file_type"`     // pdf, doc, docx, xls, xlsx
-	DocumentNo  string     `json:"document_no" db:"document_no"` // Số văn bản
-	IssuedDate  *time.Time `json:"issued_date" db:"issued_date"` // Ngày ban hành
-	UploadedBy  int64      `json:"uploaded_by" db:"uploaded_by"`
-	ViewCount   int64      `json:"view_count" db:"view_count"`
-	Status      string     `json:"status" db:"status"` // draft, published
-	PublishedAt *time.Time `json:"published_at" db:"published_at"`
-	CreatedAt   time.Time  `json:"created_at" db:"created_at"`
-	UpdatedAt   time.Time  `json:"updated_at" db:"updated_at"`
+	ID            int64      `json:"id" db:"id"`
+	Title         string     `json:"title" db:"title"`
+	Slug          string     `json:"slug" db:"slug"`
+	Description   string     `json:"description" db:"description"`
+	CategoryID    int64      `json:"category_id" db:"category_id"`
+	FilePath      string     `json:"file_path" db:"file_path"`
+	FileSize      int64      `json:"file_size" db:"file_size"`
+	MimeType      string     `json:"mime_type" db:"mime_type"` // application/pdf, application/msword, etc.
+	DownloadURL   string     `json:"download_url,omitempty" db:"-"`
+	PreviewURL    string     `json:"preview_url,omitempty" db:"-"`
+	DocumentNo    string     `json:"document_no" db:"document_no"` // Số văn bản
+	IssuedDate    *time.Time `json:"issued_date" db:"issued_date"` // Ngày ban hành
+	UploadedBy    int64      `json:"uploaded_by" db:"uploaded_by"`
+	ViewCount     int64      `json:"view_count" db:"view_count"`
+	DownloadCount int64      `json:"download_count" db:"download_count"`
+	Status        string     `json:"status" db:"status"` // draft, published, hidden
+	PublishedAt   *time.Time `json:"published_at" db:"published_at"`
+	CreatedAt     time.Time  `json:"created_at" db:"created_at"`
+	UpdatedAt     time.Time  `json:"updated_at" db:"updated_at"`
 }
 
 // MediaItem represents a media file (video/image) in the media library

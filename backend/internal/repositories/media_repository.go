@@ -52,11 +52,11 @@ func (r *mediaItemRepository) GetByID(ctx context.Context, id int64) (*models.Me
 	media := &models.MediaItem{}
 	err := r.db.QueryRowContext(ctx,
 		`SELECT id, title, slug, description, category_id, media_type, url, thumbnail_url, 
-		 duration, width, height, uploaded_by, view_count, status, published_at, 
+		 file_size, duration, width, height, uploaded_by, view_count, status, published_at, 
 		 created_at, updated_at 
 		 FROM media_items WHERE id = ?`, id).Scan(
 		&media.ID, &media.Title, &media.Slug, &media.Description, &media.CategoryID,
-		&media.MediaType, &media.URL, &media.ThumbnailURL, &media.Duration, &media.Width,
+		&media.MediaType, &media.URL, &media.ThumbnailURL, &media.FileSize, &media.Duration, &media.Width,
 		&media.Height, &media.UploadedBy, &media.ViewCount, &media.Status, &media.PublishedAt,
 		&media.CreatedAt, &media.UpdatedAt)
 	if err != nil {
@@ -69,11 +69,11 @@ func (r *mediaItemRepository) GetBySlug(ctx context.Context, slug string) (*mode
 	media := &models.MediaItem{}
 	err := r.db.QueryRowContext(ctx,
 		`SELECT id, title, slug, description, category_id, media_type, url, thumbnail_url, 
-		 duration, width, height, uploaded_by, view_count, status, published_at, 
+		 file_size, duration, width, height, uploaded_by, view_count, status, published_at, 
 		 created_at, updated_at 
 		 FROM media_items WHERE slug = ?`, slug).Scan(
 		&media.ID, &media.Title, &media.Slug, &media.Description, &media.CategoryID,
-		&media.MediaType, &media.URL, &media.ThumbnailURL, &media.Duration, &media.Width,
+		&media.MediaType, &media.URL, &media.ThumbnailURL, &media.FileSize, &media.Duration, &media.Width,
 		&media.Height, &media.UploadedBy, &media.ViewCount, &media.Status, &media.PublishedAt,
 		&media.CreatedAt, &media.UpdatedAt)
 	if err != nil {
@@ -116,7 +116,7 @@ func (r *mediaItemRepository) List(ctx context.Context, mediaType, status string
 	offset := (page - 1) * pageSize
 
 	query := `SELECT id, title, slug, description, category_id, media_type, url, thumbnail_url, 
-	          duration, width, height, uploaded_by, view_count, status, published_at, 
+	          file_size, duration, width, height, uploaded_by, view_count, status, published_at, 
 	          created_at, updated_at FROM media_items WHERE 1=1`
 	countQuery := `SELECT COUNT(*) FROM media_items WHERE 1=1`
 
@@ -167,7 +167,7 @@ func (r *mediaItemRepository) List(ctx context.Context, mediaType, status string
 		var media models.MediaItem
 		if err := rows.Scan(&media.ID, &media.Title, &media.Slug, &media.Description,
 			&media.CategoryID, &media.MediaType, &media.URL, &media.ThumbnailURL,
-			&media.Duration, &media.Width, &media.Height, &media.UploadedBy,
+			&media.FileSize, &media.Duration, &media.Width, &media.Height, &media.UploadedBy,
 			&media.ViewCount, &media.Status, &media.PublishedAt,
 			&media.CreatedAt, &media.UpdatedAt); err != nil {
 			return nil, 0, err
@@ -182,7 +182,7 @@ func (r *mediaItemRepository) ListPublished(ctx context.Context, mediaType strin
 	offset := (page - 1) * pageSize
 
 	query := `SELECT id, title, slug, description, category_id, media_type, url, thumbnail_url, 
-	          duration, width, height, uploaded_by, view_count, status, published_at, 
+	          file_size, duration, width, height, uploaded_by, view_count, status, published_at, 
 	          created_at, updated_at FROM media_items WHERE status = 'published'`
 	countQuery := `SELECT COUNT(*) FROM media_items WHERE status = 'published'`
 	args := []interface{}{}
@@ -221,7 +221,7 @@ func (r *mediaItemRepository) ListPublished(ctx context.Context, mediaType strin
 		var media models.MediaItem
 		if err := rows.Scan(&media.ID, &media.Title, &media.Slug, &media.Description,
 			&media.CategoryID, &media.MediaType, &media.URL, &media.ThumbnailURL,
-			&media.Duration, &media.Width, &media.Height, &media.UploadedBy,
+			&media.FileSize, &media.Duration, &media.Width, &media.Height, &media.UploadedBy,
 			&media.ViewCount, &media.Status, &media.PublishedAt,
 			&media.CreatedAt, &media.UpdatedAt); err != nil {
 			return nil, 0, err

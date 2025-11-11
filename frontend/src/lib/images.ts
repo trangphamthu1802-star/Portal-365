@@ -2,7 +2,9 @@
  * Image handling utilities for Portal 365
  */
 
-const FILES_BASE = import.meta.env.VITE_FILES_BASE || 'http://localhost:8080';
+// Use relative path in production, full URL in development
+const FILES_BASE = import.meta.env.VITE_FILES_BASE || 
+  (import.meta.env.MODE === 'production' ? '' : 'http://localhost:8080');
 
 export interface Article {
   featured_image?: string;

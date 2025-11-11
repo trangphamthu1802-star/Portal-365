@@ -24,94 +24,94 @@ export const NAVIGATION_MENU: MenuItem[] = [
       {
         id: 'history',
         label: 'Lịch sử truyền thống',
-        path: '/gioi-thieu/history',
-        prefetchKey: ['intro', 'history']
+        path: '/gioi-thieu/lich-su-truyen-thong',
+        prefetchKey: ['intro', 'lich-su-truyen-thong']
       },
       {
         id: 'organization',
-        label: 'Tổ chức đơn vị',
-        path: '/gioi-thieu/organization',
-        prefetchKey: ['intro', 'organization']
+        label: 'Cơ cấu - Tổ chức',
+        path: '/gioi-thieu/to-chuc-don-vi',
+        prefetchKey: ['intro', 'to-chuc-don-vi']
       },
       {
         id: 'leadership',
-        label: 'Lãnh đạo Sư đoàn',
-        path: '/gioi-thieu/leadership',
-        prefetchKey: ['intro', 'leadership']
+        label: 'Lãnh đạo chỉ huy sư đoàn',
+        path: '/gioi-thieu/lanh-dao',
+        prefetchKey: ['intro', 'lanh-dao-su-doan']
       },
       {
         id: 'achievements',
         label: 'Thành tích đơn vị',
-        path: '/gioi-thieu/achievements',
-        prefetchKey: ['intro', 'achievements']
+        path: '/gioi-thieu/thanh-tich',
+        prefetchKey: ['intro', 'thanh-tich-don-vi']
       }
     ]
   },
   {
     id: 'activities',
     label: 'Hoạt động',
-    path: '/activities',
+    path: '/hoat-dong',
     prefetchKey: ['activities'],
     children: [
       {
         id: 'activities-all',
         label: 'Tất cả hoạt động',
-        path: '/activities'
-      },
-      {
-        id: 'activities-thu-truong',
-        label: 'Hoạt động của Thủ trưởng sư đoàn',
-        path: `/c/${CATEGORY_SLUGS.THU_TRUONG}`,
-        prefetchKey: ['articles', CATEGORY_SLUGS.THU_TRUONG]
+        path: '/hoat-dong'
       },
       {
         id: 'activities-su-doan',
         label: 'Hoạt động của Sư đoàn',
-        path: `/c/${CATEGORY_SLUGS.SU_DOAN}`,
-        prefetchKey: ['articles', CATEGORY_SLUGS.SU_DOAN]
+        path: '/hoat-dong/hoat-dong-su-doan',
+        prefetchKey: ['articles', 'hoat-dong-su-doan']
       },
       {
         id: 'activities-don-vi',
         label: 'Hoạt động của các đơn vị',
-        path: `/c/${CATEGORY_SLUGS.DON_VI}`,
-        prefetchKey: ['articles', CATEGORY_SLUGS.DON_VI]
+        path: '/hoat-dong/hoat-dong-cac-don-vi',
+        prefetchKey: ['articles', 'hoat-dong-cac-don-vi']
+      },
+      {
+        id: 'activities-thu-truong',
+        label: 'Hoạt động của Thủ trưởng',
+        path: '/hoat-dong/hoat-dong-thu-truong',
+        prefetchKey: ['articles', 'hoat-dong-thu-truong']
       }
     ]
   },
   {
     id: 'news',
     label: 'Tin tức',
-    path: '/news',
+    path: '/tin-tuc',
     prefetchKey: ['news'],
     children: [
       {
         id: 'news-all',
         label: 'Tất cả tin tức',
-        path: '/news'
-      },
-      {
-        id: 'news-quoc-te',
-        label: 'Tin quốc tế',
-        path: `/c/${CATEGORY_SLUGS.QUOC_TE}`,
-        prefetchKey: ['articles', CATEGORY_SLUGS.QUOC_TE]
+        path: '/tin-tuc'
       },
       {
         id: 'news-trong-nuoc',
         label: 'Tin trong nước',
-        path: `/c/${CATEGORY_SLUGS.TRONG_NUOC}`,
-        prefetchKey: ['articles', CATEGORY_SLUGS.TRONG_NUOC]
+        path: '/c/tin-trong-nuoc',
+        prefetchKey: ['articles', 'tin-trong-nuoc']
+      },
+      {
+        id: 'news-quoc-te',
+        label: 'Tin quốc tế',
+        path: '/c/tin-quoc-te',
+        prefetchKey: ['articles', 'tin-quoc-te']
       },
       {
         id: 'news-quan-su',
         label: 'Tin quân sự',
-        path: `/c/${CATEGORY_SLUGS.QUAN_SU}`,
-        prefetchKey: ['articles', CATEGORY_SLUGS.QUAN_SU]
+        path: '/c/tin-quan-su',
+        prefetchKey: ['articles', 'tin-quan-su']
       },
       {
         id: 'news-hoat-dong',
-        label: 'Tin hoạt động của Sư đoàn',
-        path: `/c/${CATEGORY_SLUGS.HOAT_DONG_SU_DOAN}`,
-        prefetchKey: ['articles', CATEGORY_SLUGS.HOAT_DONG_SU_DOAN]
+        label: 'Bảo vệ nền tảng tư tưởng của Đảng',
+        path: '/c/bao-ve-nen-tang-tu-tuong-cua-dang',
+        prefetchKey: ['articles', 'bao-ve-nen-tang-tu-tuong-cua-dang']
       }
     ]
   },

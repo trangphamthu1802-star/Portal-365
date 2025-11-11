@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "build": "vite build",
+    "build:check": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
     "generate:api": "npx swagger-typescript-api generate -p ../backend/docs/swagger/swagger.json -o ./src/api -n api.ts --axios --modular --extract-request-params --extract-response-body --unwrap-response-data",

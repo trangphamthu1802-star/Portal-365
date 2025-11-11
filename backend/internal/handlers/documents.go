@@ -377,21 +377,20 @@ func (h *DocumentsHandler) Upload(c *gin.Context) {
 
 	// 10. Create document record
 	userID, _ := c.Get("user_id")
-	fileURL := fmt.Sprintf("%s/%s/%s", DocumentStaticPrefix, yearMonth, filename)
+	filePathURL := fmt.Sprintf("%s/%s/%s", DocumentStaticPrefix, yearMonth, filename)
 
 	document := &models.Document{
 		Title:       title,
 		Slug:        slug,
 		Description: description,
 		CategoryID:  categoryID,
-		FileURL:     fileURL,
-		FileName:    header.Filename,
+		FilePath:    filePathURL,
 		FileSize:    header.Size,
-		FileType:    contentType,
+		MimeType:    contentType,
 		DocumentNo:  documentNo,
 		IssuedDate:  issuedDate,
 		UploadedBy:  userID.(int64),
-		Status:      "draft",
+		Status:      "published", // Auto-publish on upload
 	}
 
 	if err := h.repo.Create(c.Request.Context(), document); err != nil {

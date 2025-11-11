@@ -1165,7 +1165,25 @@ func (h *UserHandler) Create(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusCreated, dto.SuccessResponse{Data: user})
+	// Assign roles if provided
+	if len(req.RoleIDs) > 0 {
+		for _, roleID := range req.RoleIDs {
+			if err := h.repos.Users.AssignRole(c.Request.Context(), user.ID, roleID); err != nil {
+				// Log error but don't fail the request
+				c.Error(err)
+			}
+		}
+	}
+
+	// Fetch user with roles for response
+	userWithRoles, err := h.repos.Users.GetByID(c.Request.Context(), user.ID)
+	if err != nil {
+		// Fallback to user without roles
+		c.JSON(http.StatusCreated, dto.SuccessResponse{Data: user})
+		return
+	}
+
+	c.JSON(http.StatusCreated, dto.SuccessResponse{Data: userWithRoles})
 }
 
 func (h *UserHandler) Update(c *gin.Context) {

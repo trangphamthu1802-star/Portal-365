@@ -1,6 +1,8 @@
 package routes
 
 import (
+	"path/filepath"
+
 	"github.com/gin-gonic/gin"
 
 	"github.com/thieugt95/portal-365/backend/internal/config"
@@ -10,8 +12,15 @@ import (
 )
 
 func Setup(r *gin.Engine, cfg *config.Config, repos *database.Repositories) {
-	// Static file serving for uploads
-	r.Static("/static", "./storage")
+	// Static file serving for uploads with Range request support for videos
+	r.GET("/static/*filepath", func(c *gin.Context) {
+		filePath := c.Param("filepath")
+		fullPath := filepath.Join("./storage", filePath)
+
+		// Serve file with Range request support (important for video preview)
+		c.Header("Accept-Ranges", "bytes")
+		c.File(fullPath)
+	})
 
 	// Health check
 	r.GET("/api/v1/healthz", handlers.HealthCheck)
@@ -52,7 +61,14 @@ func Setup(r *gin.Engine, cfg *config.Config, repos *database.Repositories) {
 			public.GET("/pages", pageHandler.List)
 			public.GET("/pages/:slug", pageHandler.GetBySlug)
 
-			public.GET("/settings", handlers.NewSettingHandler(repos).GetPublic)
+			// Settings (public)
+			settingHandler := handlers.NewSettingHandler(repos)
+			public.GET("/settings", settingHandler.GetPublic)
+			public.GET("/settings/public", settingHandler.GetPublic) // Alternative route for frontend compatibility
+
+			// Menus (public)
+			menuHandler := handlers.NewMenuHandler(repos)
+			public.GET("/menus", menuHandler.List) // Public menu listing
 
 			public.GET("/search", handlers.NewSearchHandler(repos).Search)
 
@@ -184,8 +200,10 @@ func Setup(r *gin.Engine, cfg *config.Config, repos *database.Repositories) {
 				handler := handlers.NewBannerHandlerImpl(repos)
 				banners.GET("", handler.List)
 				banners.POST("", handler.Create)
+				banners.POST("/upload", handler.CreateWithUpload) // New: Upload with image
 				banners.GET("/:id", handler.GetByID)
 				banners.PUT("/:id", handler.Update)
+				banners.PUT("/:id/upload", handler.UpdateWithUpload) // New: Update with image
 				banners.DELETE("/:id", handler.Delete)
 			}
 

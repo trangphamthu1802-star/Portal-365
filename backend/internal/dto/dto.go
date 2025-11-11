@@ -103,17 +103,18 @@ type RefreshTokenRequest struct {
 
 // User
 type CreateUserRequest struct {
-	Email    string `json:"email" binding:"required"`
-	Password string `json:"password" binding:"required,min=8"`
-	FullName string `json:"full_name" binding:"required"`
-	Avatar   string `json:"avatar"`
+	Email    string  `json:"email" binding:"required"`
+	Password string  `json:"password" binding:"required,min=8"`
+	FullName string  `json:"full_name" binding:"required"`
+	Avatar   *string `json:"avatar"`
+	RoleIDs  []int64 `json:"role_ids"` // Optional: assign roles on creation
 }
 
 type UpdateUserRequest struct {
-	Email    string `json:"email" binding:"required"`
-	FullName string `json:"full_name" binding:"required"`
-	Avatar   string `json:"avatar"`
-	IsActive bool   `json:"is_active"`
+	Email    string  `json:"email" binding:"required"`
+	FullName string  `json:"full_name" binding:"required"`
+	Avatar   *string `json:"avatar"`
+	IsActive bool    `json:"is_active"`
 }
 
 type ChangePasswordRequest struct {
@@ -125,7 +126,7 @@ type UserResponse struct {
 	ID        int64     `json:"id"`
 	Email     string    `json:"email"`
 	FullName  string    `json:"full_name"`
-	Avatar    string    `json:"avatar"`
+	Avatar    *string   `json:"avatar,omitempty"`
 	IsActive  bool      `json:"is_active"`
 	Roles     []string  `json:"roles"`
 	CreatedAt time.Time `json:"created_at"`

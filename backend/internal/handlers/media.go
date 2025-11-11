@@ -28,7 +28,7 @@ func NewMediaItemHandler(repos *database.Repositories) *MediaItemHandler {
 }
 
 const (
-	MaxUploadSize   = 5 * 1024 * 1024 // 5MB
+	MaxUploadSize   = 100 * 1024 * 1024 // 100MB (cho cả ảnh và video)
 	MinImageWidth   = 1200
 	UploadDir       = "./storage/uploads/images"
 	StaticURLPrefix = "/static/uploads/images"
@@ -40,14 +40,35 @@ var AllowedImageMIME = map[string]bool{
 	"image/webp": true,
 }
 
+var AllowedVideoMIME = map[string]bool{
+	"video/mp4":       true,
+	"video/mpeg":      true,
+	"video/quicktime": true, // .mov
+	"video/x-msvideo": true, // .avi
+	"video/webm":      true,
+}
+
+var AllowedMediaMIME = map[string]bool{
+	// Images
+	"image/jpeg": true,
+	"image/png":  true,
+	"image/webp": true,
+	// Videos
+	"video/mp4":       true,
+	"video/mpeg":      true,
+	"video/quicktime": true,
+	"video/x-msvideo": true,
+	"video/webm":      true,
+}
+
 // Upload godoc
 // @Summary Upload media file
-// @Description Upload an image file (JPEG, PNG, WebP) with validation
+// @Description Upload an image or video file with validation. Images: JPEG, PNG, WebP (max 100MB). Videos: MP4, MPEG, MOV, AVI, WebM (max 100MB)
 // @Tags Media
 // @Security BearerAuth
 // @Accept multipart/form-data
 // @Produce json
-// @Param file formData file true "Image file (max 5MB, min 1200px width)"
+// @Param file formData file true "Media file (max 100MB)"
 // @Param title formData string false "Media title"
 // @Param alt formData string false "Alt text for image"
 // @Param category_id formData int false "Category ID"
@@ -83,54 +104,82 @@ func (h *MediaItemHandler) Upload(c *gin.Context) {
 
 	// 3. Validate MIME type from header
 	contentType := header.Header.Get("Content-Type")
-	if !AllowedImageMIME[contentType] {
+	if !AllowedMediaMIME[contentType] {
 		c.JSON(http.StatusBadRequest, dto.ErrorResponse{
 			Error: dto.ErrorDetail{
 				Code:    "INVALID_FILE_TYPE",
-				Message: "Only JPEG, PNG, and WebP images are allowed",
+				Message: "Only JPEG, PNG, WebP images and MP4, MPEG, MOV, AVI, WebM videos are allowed",
 			},
 		})
 		return
 	}
 
-	// 4. Verify magic bytes (first 512 bytes)
-	buffer := make([]byte, 512)
-	_, err = file.Read(buffer)
-	if err != nil && err != io.EOF {
-		c.JSON(http.StatusInternalServerError, dto.ErrorResponse{
-			Error: dto.ErrorDetail{
-				Code:    "FILE_READ_ERROR",
-				Message: "Failed to read file",
-			},
-		})
-		return
+	// 4. Verify magic bytes (first 512 bytes) - chỉ cho images
+	isImage := AllowedImageMIME[contentType]
+	isVideo := AllowedVideoMIME[contentType]
+
+	if isImage {
+		buffer := make([]byte, 512)
+		_, err = file.Read(buffer)
+		if err != nil && err != io.EOF {
+			c.JSON(http.StatusInternalServerError, dto.ErrorResponse{
+				Error: dto.ErrorDetail{
+					Code:    "FILE_READ_ERROR",
+					Message: "Failed to read file",
+				},
+			})
+			return
+		}
+		detectedType := http.DetectContentType(buffer)
+		if !AllowedImageMIME[detectedType] {
+			c.JSON(http.StatusBadRequest, dto.ErrorResponse{
+				Error: dto.ErrorDetail{
+					Code:    "INVALID_FILE_TYPE",
+					Message: "File content does not match allowed image types",
+				},
+			})
+			return
+		}
+
+		// Reset file pointer after reading magic bytes
+		if _, err := file.Seek(0, 0); err != nil {
+			c.JSON(http.StatusInternalServerError, dto.ErrorResponse{
+				Error: dto.ErrorDetail{
+					Code:    "FILE_READ_ERROR",
+					Message: "Failed to reset file pointer",
+				},
+			})
+			return
+		}
 	}
-	detectedType := http.DetectContentType(buffer)
-	if !AllowedImageMIME[detectedType] {
+
+	// 5. Determine media type and upload directory
+	var mediaType string
+	var baseUploadDir string
+	var staticPrefix string
+
+	if isImage {
+		mediaType = "image"
+		baseUploadDir = "./storage/uploads/images"
+		staticPrefix = "/static/uploads/images"
+	} else if isVideo {
+		mediaType = "video"
+		baseUploadDir = "./storage/uploads/videos"
+		staticPrefix = "/static/uploads/videos"
+	} else {
 		c.JSON(http.StatusBadRequest, dto.ErrorResponse{
 			Error: dto.ErrorDetail{
 				Code:    "INVALID_FILE_TYPE",
-				Message: "File content does not match allowed image types",
+				Message: "Unsupported media type",
 			},
 		})
 		return
 	}
 
-	// Reset file pointer after reading magic bytes
-	if _, err := file.Seek(0, 0); err != nil {
-		c.JSON(http.StatusInternalServerError, dto.ErrorResponse{
-			Error: dto.ErrorDetail{
-				Code:    "FILE_READ_ERROR",
-				Message: "Failed to reset file pointer",
-			},
-		})
-		return
-	}
-
-	// 5. Create directory structure: YYYY/MM
+	// 6. Create directory structure: YYYY/MM
 	now := time.Now()
 	yearMonth := now.Format("2006/01")
-	uploadPath := filepath.Join(UploadDir, yearMonth)
+	uploadPath := filepath.Join(baseUploadDir, yearMonth)
 	if err := os.MkdirAll(uploadPath, 0755); err != nil {
 		c.JSON(http.StatusInternalServerError, dto.ErrorResponse{
 			Error: dto.ErrorDetail{
@@ -141,7 +190,7 @@ func (h *MediaItemHandler) Upload(c *gin.Context) {
 		return
 	}
 
-	// 6. Generate unique filename with UUID
+	// 7. Generate unique filename with UUID
 	ext := strings.ToLower(filepath.Ext(header.Filename))
 	if ext == "" {
 		// Derive extension from MIME type
@@ -152,12 +201,22 @@ func (h *MediaItemHandler) Upload(c *gin.Context) {
 			ext = ".png"
 		case "image/webp":
 			ext = ".webp"
+		case "video/mp4":
+			ext = ".mp4"
+		case "video/mpeg":
+			ext = ".mpeg"
+		case "video/quicktime":
+			ext = ".mov"
+		case "video/x-msvideo":
+			ext = ".avi"
+		case "video/webm":
+			ext = ".webm"
 		}
 	}
 	filename := uuid.New().String() + ext
 	fullPath := filepath.Join(uploadPath, filename)
 
-	// 7. Save file to disk
+	// 8. Save file to disk
 	dst, err := os.Create(fullPath)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, dto.ErrorResponse{
@@ -204,7 +263,7 @@ func (h *MediaItemHandler) Upload(c *gin.Context) {
 	}
 
 	// 10. Create MediaItem record
-	urlPath := fmt.Sprintf("%s/%s/%s", StaticURLPrefix, yearMonth, filename)
+	urlPath := fmt.Sprintf("%s/%s/%s", staticPrefix, yearMonth, filename)
 
 	// Generate simple slug from title + timestamp for uniqueness
 	slug := strings.ToLower(strings.ReplaceAll(title, " ", "-")) + "-" + uuid.New().String()[:8]
@@ -214,12 +273,12 @@ func (h *MediaItemHandler) Upload(c *gin.Context) {
 		Slug:         slug,
 		Description:  alt,
 		CategoryID:   categoryID,
-		MediaType:    "image",
+		MediaType:    mediaType, // "image" hoặc "video"
 		URL:          urlPath,
 		ThumbnailURL: urlPath, // TODO: Generate actual thumbnail
 		FileSize:     header.Size,
 		UploadedBy:   uploadedBy,
-		Status:       "draft",
+		Status:       "published",
 		CreatedAt:    now,
 		UpdatedAt:    now,
 	}

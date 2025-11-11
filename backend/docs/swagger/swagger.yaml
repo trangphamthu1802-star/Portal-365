@@ -469,26 +469,30 @@ definitions:
       document_no:
         description: Số văn bản
         type: string
-      file_name:
+      download_count:
+        type: integer
+      download_url:
+        type: string
+      file_path:
         type: string
       file_size:
         type: integer
-      file_type:
-        description: pdf, doc, docx, xls, xlsx
-        type: string
-      file_url:
-        type: string
       id:
         type: integer
       issued_date:
         description: Ngày ban hành
+        type: string
+      mime_type:
+        description: application/pdf, application/msword, etc.
+        type: string
+      preview_url:
         type: string
       published_at:
         type: string
       slug:
         type: string
       status:
-        description: draft, published
+        description: draft, published, hidden
         type: string
       title:
         type: string
@@ -835,6 +839,134 @@ paths:
       summary: Update banner (Admin)
       tags:
       - Banners
+  /admin/banners/{id}/upload:
+    put:
+      consumes:
+      - multipart/form-data
+      description: Update banner and optionally upload new image (auto-resized based
+        on placement)
+      parameters:
+      - description: Banner ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: New banner image (max 100MB, JPEG/PNG/WebP)
+        in: formData
+        name: file
+        type: file
+      - description: Banner title
+        in: formData
+        name: title
+        type: string
+      - description: Placement (banner-1, banner-2, etc.)
+        in: formData
+        name: placement
+        type: string
+      - description: Link URL
+        in: formData
+        name: link_url
+        type: string
+      - description: Is active
+        in: formData
+        name: is_active
+        type: boolean
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/dto.SuccessResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.Banner'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update banner with new image (Admin)
+      tags:
+      - Banners
+  /admin/banners/upload:
+    post:
+      consumes:
+      - multipart/form-data
+      description: 'Create a new banner with image file upload. Image will be auto-resized
+        based on placement: banner-1 (760x190), banner-2 (760x190), others (1200x200)'
+      parameters:
+      - description: Banner image (max 100MB, JPEG/PNG/WebP)
+        in: formData
+        name: file
+        required: true
+        type: file
+      - description: Banner title
+        in: formData
+        name: title
+        required: true
+        type: string
+      - description: Placement (banner-1, banner-2, home-middle, article-top, etc.)
+        in: formData
+        name: placement
+        required: true
+        type: string
+      - description: Link URL
+        in: formData
+        name: link_url
+        type: string
+      - description: 'Sort order (default: 0)'
+        in: formData
+        name: sort_order
+        type: integer
+      - description: 'Is active (default: true)'
+        in: formData
+        name: is_active
+        type: boolean
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/dto.SuccessResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.Banner'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Create banner with image upload (Admin)
+      tags:
+      - Banners
   /admin/media:
     get:
       description: Get list of all media items with filters (admin only)
@@ -1055,9 +1187,10 @@ paths:
     post:
       consumes:
       - multipart/form-data
-      description: Upload an image file (JPEG, PNG, WebP) with validation
+      description: 'Upload an image or video file with validation. Images: JPEG, PNG,
+        WebP (max 100MB). Videos: MP4, MPEG, MOV, AVI, WebM (max 100MB)'
       parameters:
-      - description: Image file (max 5MB, min 1200px width)
+      - description: Media file (max 100MB)
         in: formData
         name: file
         required: true

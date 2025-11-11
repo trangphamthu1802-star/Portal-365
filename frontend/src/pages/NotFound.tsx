@@ -41,7 +41,7 @@ export default function NotFound() {
 
           <div className="mt-12 grid md:grid-cols-3 gap-6 max-w-3xl mx-auto">
             <Link
-              to="/intro/history"
+              to="/gioi-thieu/lich-su-truyen-thong"
               className="p-6 bg-white rounded-lg shadow hover:shadow-lg transition-shadow border border-gray-200"
             >
               <h3 className="font-bold text-lg text-gray-900 mb-2">Giới thiệu</h3>

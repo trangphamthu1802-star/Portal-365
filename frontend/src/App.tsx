@@ -18,8 +18,7 @@ import AdminDashboard from './pages/admin/Dashboard';
 import NewsAdminList from './pages/admin/news/List';
 import DocsAdminList from './pages/admin/docs/List';
 import MediaAdminList from './pages/admin/media/List';
-import BannersAdminList from './pages/admin/banners/List';
-import BannerForm from './pages/admin/banners/Form';
+import AdminBanners from './pages/admin/Banners';
 import PagesList from './pages/admin/pages/List';
 import PageForm from './pages/admin/pages/Form';
 import IntroductionList from './pages/admin/Introduction';
@@ -32,6 +31,15 @@ import NewsIndex from './pages/news/Index';
 import DocsIndex from './pages/docs/Index';
 import MediaVideos from './pages/media/Videos';
 import MediaPhotos from './pages/media/Photos';
+import ActivitiesPage from './pages/Activities';
+import NewsPage from './pages/News';
+import TestCategoryPage from './pages/TestCategoryPage';
+
+// Introduction pages
+import History from './pages/about/History';
+import Organization from './pages/about/Organization';
+import Leadership from './pages/about/Leadership';
+import Achievements from './pages/about/Achievements';
 
 // Create a client
 const queryClient = new QueryClient({
@@ -62,6 +70,8 @@ function App() {
             <Route path="/a/:slug" element={<ArticlePage />} />
             {/* Redirect old article URLs */}
             <Route path="/articles/:slug" element={<RedirectToArticle />} />
+            {/* TEST ROUTE */}
+            <Route path="/test-category" element={<TestCategoryPage />} />
             {/* New category pages */}
             <Route path="/c/:slug" element={<CategoryPage />} />
             {/* Legacy category routes */}
@@ -69,10 +79,25 @@ function App() {
             <Route path="/documents/:slug" element={<CategoryDetailPage />} />
             <Route path="/media/:slug" element={<CategoryDetailPage />} />
             <Route path="/search" element={<SearchPage />} />
+            
+            {/* Introduction Pages - Specific routes MUST come before catch-all */}
+            <Route path="/gioi-thieu/lich-su-truyen-thong" element={<History />} />
+            <Route path="/gioi-thieu/to-chuc-don-vi" element={<Organization />} />
+            <Route path="/gioi-thieu/lanh-dao-su-doan" element={<Leadership />} />
+            <Route path="/gioi-thieu/thanh-tich-don-vi" element={<Achievements />} />
+            
+            {/* Redirects for old URLs */}
+            <Route path="/gioi-thieu/lanh-dao" element={<Navigate to="/gioi-thieu/lanh-dao-su-doan" replace />} />
+            <Route path="/gioi-thieu/thanh-tich" element={<Navigate to="/gioi-thieu/thanh-tich-don-vi" replace />} />
+            
+            {/* Introduction catch-all for other pages */}
             <Route path="/intro/:slug" element={<IntroPage />} />
             <Route path="/gioi-thieu/:slug" element={<IntroPage />} />
             
             {/* Section Pages */}
+            <Route path="/hoat-dong" element={<ActivitiesPage />} />
+            <Route path="/hoat-dong/:categorySlug" element={<ActivitiesPage />} />
+            <Route path="/tin-tuc" element={<NewsPage />} />
             <Route path="/activities" element={<ActivitiesIndex />} />
             <Route path="/news" element={<NewsIndex />} />
             <Route path="/docs" element={<DocsIndex />} />
@@ -221,23 +246,7 @@ function App() {
               path="/admin/banners"
               element={
                 <RequireAuth requiredRoles={["Admin","Editor"]}>
-                  <BannersAdminList />
-                </RequireAuth>
-              }
-            />
-            <Route
-              path="/admin/banners/new"
-              element={
-                <RequireAuth requiredRoles={["Admin","Editor"]}>
-                  <BannerForm />
-                </RequireAuth>
-              }
-            />
-            <Route
-              path="/admin/banners/:id/edit"
-              element={
-                <RequireAuth requiredRoles={["Admin","Editor"]}>
-                  <BannerForm />
+                  <AdminBanners />
                 </RequireAuth>
               }
             />

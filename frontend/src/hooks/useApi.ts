@@ -329,8 +329,11 @@ export const usePublicMediaItems = (params?: { page?: number; page_size?: number
       if (params?.media_type) queryParams.append('media_type', params.media_type);
       if (params?.category_id) queryParams.append('category_id', params.category_id.toString());
       
+      const API_BASE = import.meta.env.VITE_API_BASE || 
+        (import.meta.env.MODE === 'production' ? '/api/v1' : 'http://localhost:8080/api/v1');
+      
       const response = await fetch(
-        `${import.meta.env.VITE_API_BASE || 'http://localhost:8080/api/v1'}/media-items?${queryParams}`
+        `${API_BASE}/media-items?${queryParams}`
       );
       if (!response.ok) {
         throw new Error('Failed to fetch media items');

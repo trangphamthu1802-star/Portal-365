@@ -8,7 +8,7 @@ export interface MediaItem {
   title: string;
   slug: string;
   description?: string;
-  file_path: string;
+  url: string;
   file_size: number;
   mime_type: string;
   media_type: 'image' | 'video';

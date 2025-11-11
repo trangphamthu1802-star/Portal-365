@@ -37,7 +37,12 @@ func NewAuthHandler(cfg *config.Config, repos *database.Repositories) *AuthHandl
 func (h *AuthHandler) Login(c *gin.Context) {
 	var req dto.LoginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		middleware.AbortWithError(c, http.StatusBadRequest, "invalid_request", err.Error())
+		c.JSON(http.StatusBadRequest, middleware.ErrorResponse{
+			Error: middleware.ErrorDetail{
+				Code:    "invalid_request",
+				Message: err.Error(),
+			},
+		})
 		return
 	}
 
@@ -45,29 +50,54 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	user, err := h.repos.Users.GetByEmail(c.Request.Context(), req.Email)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			middleware.AbortWithError(c, http.StatusUnauthorized, "invalid_credentials", "Invalid email or password")
+			c.JSON(http.StatusUnauthorized, middleware.ErrorResponse{
+				Error: middleware.ErrorDetail{
+					Code:    "invalid_credentials",
+					Message: "Invalid email or password",
+				},
+			})
 			return
 		}
-		middleware.AbortWithError(c, http.StatusInternalServerError, "internal_error", "Failed to authenticate")
+		c.JSON(http.StatusInternalServerError, middleware.ErrorResponse{
+			Error: middleware.ErrorDetail{
+				Code:    "internal_error",
+				Message: "Failed to authenticate: " + err.Error(),
+			},
+		})
 		return
 	}
 
 	// Check if user is active
 	if !user.IsActive {
-		middleware.AbortWithError(c, http.StatusUnauthorized, "account_disabled", "Account is disabled")
+		c.JSON(http.StatusUnauthorized, middleware.ErrorResponse{
+			Error: middleware.ErrorDetail{
+				Code:    "account_disabled",
+				Message: "Account is disabled",
+			},
+		})
 		return
 	}
 
 	// Verify password
 	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(req.Password)); err != nil {
-		middleware.AbortWithError(c, http.StatusUnauthorized, "invalid_credentials", "Invalid email or password")
+		c.JSON(http.StatusUnauthorized, middleware.ErrorResponse{
+			Error: middleware.ErrorDetail{
+				Code:    "invalid_credentials",
+				Message: "Invalid email or password",
+			},
+		})
 		return
 	}
 
 	// Get user roles
 	roles, err := h.repos.Users.GetRoles(c.Request.Context(), user.ID)
 	if err != nil {
-		middleware.AbortWithError(c, http.StatusInternalServerError, "internal_error", "Failed to get user roles")
+		c.JSON(http.StatusInternalServerError, middleware.ErrorResponse{
+			Error: middleware.ErrorDetail{
+				Code:    "internal_error",
+				Message: "Failed to get user roles: " + err.Error(),
+			},
+		})
 		return
 	}
 
@@ -79,13 +109,23 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	// Generate tokens
 	accessToken, err := middleware.GenerateAccessToken(h.cfg, user.ID, roleNames)
 	if err != nil {
-		middleware.AbortWithError(c, http.StatusInternalServerError, "internal_error", "Failed to generate access token")
+		c.JSON(http.StatusInternalServerError, middleware.ErrorResponse{
+			Error: middleware.ErrorDetail{
+				Code:    "internal_error",
+				Message: "Failed to generate access token: " + err.Error(),
+			},
+		})
 		return
 	}
 
 	refreshTokenStr, expiresAt, err := middleware.GenerateRefreshToken(h.cfg, user.ID, roleNames)
 	if err != nil {
-		middleware.AbortWithError(c, http.StatusInternalServerError, "internal_error", "Failed to generate refresh token")
+		c.JSON(http.StatusInternalServerError, middleware.ErrorResponse{
+			Error: middleware.ErrorDetail{
+				Code:    "internal_error",
+				Message: "Failed to generate refresh token: " + err.Error(),
+			},
+		})
 		return
 	}
 
@@ -96,7 +136,12 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		ExpiresAt: expiresAt,
 	}
 	if err := h.repos.Users.SaveRefreshToken(c.Request.Context(), refreshToken); err != nil {
-		middleware.AbortWithError(c, http.StatusInternalServerError, "internal_error", "Failed to save refresh token")
+		c.JSON(http.StatusInternalServerError, middleware.ErrorResponse{
+			Error: middleware.ErrorDetail{
+				Code:    "internal_error",
+				Message: "Failed to save refresh token: " + err.Error(),
+			},
+		})
 		return
 	}
 

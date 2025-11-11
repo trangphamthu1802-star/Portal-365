@@ -92,12 +92,6 @@ export default function LoginPage() {
           </button>
         </form>
 
-        <div className="mt-4 text-center text-sm text-gray-600">
-          <p>Demo credentials:</p>
-          <p>Email: admin@portal365.com</p>
-          <p>Password: admin123</p>
-        </div>
-
         <div className="mt-6 text-center">
           <a href="/" className="text-blue-600 hover:text-blue-800">
             ← Back to Home
